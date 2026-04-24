@@ -1,0 +1,147 @@
+{
+  "DESKTOP-UKNLSFE": {
+    "hostname": "DESKTOP-UKNLSFE",
+    "ip": "10.8.4.201",
+    "mac": "f0:a6:54:3c:c8:6d",
+    "usuario": "FSMXADMIN",
+    "plataforma": "win32",
+    "tipoSistema": "x64",
+    "uptime": 536,
+    "marca": "Dell Inc.",
+    "modelo": "Vostro 3405",
+    "cpu": {
+      "modelo": "AMD Ryzen 5 3450U with Radeon Vega Mobile Gfx  ",
+      "nucleos": 8,
+      "velocidad_mhz": 2100,
+      "temperatura": null
+    },
+    "ram": {
+      "totalGB": 5.89,
+      "libreGB": 1.35,
+      "usoGB": 4.54,
+      "porcentaje": 77.15
+    },
+    "discos": [
+      {
+        "disco": "C:",
+        "tamañoGB": 237.62,
+        "usadoGB": 70.97,
+        "porcentaje": 29.86
+      }
+    ],
+    "sistema": {
+      "idDispositivo": "387KZT3",
+      "idProducto": "1.29.0",
+      "especificacion": "24H2",
+      "edicion": "Microsoft Windows 11 Pro",
+      "version": "10.0.26100",
+      "build": "26100"
+    },
+    "ubicacion": {},
+    "fecha": "2026-04-01T21:07:44.908Z",
+    "status": "online",
+    "lastSeen": "2026-04-01T21:08:13.912Z"
+  },
+  "ACERVANTES": {
+    "hostname": "ACERVANTES",
+    "ip": "10.8.4.158",
+    "mac": "ac:f2:3c:aa:f9:39",
+    "usuario": "acervantes",
+    "plataforma": "win32",
+    "tipoSistema": "x64",
+    "uptime": 429934,
+    "marca": "Dell Inc.",
+    "modelo": "Dell Pro 16 PC16250",
+    "cpu": {
+      "modelo": "Intel(R) Core(TM) 5 120U",
+      "nucleos": 12,
+      "velocidad_mhz": 2496,
+      "temperatura": null
+    },
+    "ram": {
+      "totalGB": 15.69,
+      "libreGB": 2.15,
+      "usoGB": 13.54,
+      "porcentaje": 86.27
+    },
+    "discos": [
+      {
+        "disco": "C:",
+        "tamañoGB": 451.71,
+        "usadoGB": 364.06,
+        "porcentaje": 80.59
+      },
+      {
+        "disco": "D:",
+        "tamañoGB": 25,
+        "usadoGB": 10.78,
+        "porcentaje": 43.13
+      },
+      {
+        "disco": "S:",
+        "tamañoGB": 2048,
+        "usadoGB": 11.51,
+        "porcentaje": 0.56
+      }
+    ],
+    "sistema": {
+      "idDispositivo": "9DRRL94",
+      "idProducto": "1.12.1",
+      "especificacion": "25H2",
+      "edicion": "Microsoft Windows 11 Pro",
+      "version": "10.0.26200",
+      "build": "26200"
+    },
+    "ubicacion": null,
+    "fecha": "2026-04-01T21:31:08.804Z",
+    "status": "online",
+    "lastSeen": "2026-04-01T21:32:05.624Z"
+  },
+  "DESKTOP-3NL7DEK": {
+    "hostname": "DESKTOP-3NL7DEK",
+    "ip": "10.8.4.95",
+    "mac": "c4:47:4e:77:82:ba",
+    "usuario": "Dev FSMX",
+    "plataforma": "win32",
+    "tipoSistema": "x64",
+    "uptime": 98591.687,
+    "marca": "Dell Inc.",
+    "modelo": "Latitude 3540",
+    "cpu": {
+      "modelo": "12th Gen Intel(R) Core(TM) i5-1235U",
+      "nucleos": 12,
+      "velocidad_mhz": 2496,
+      "temperatura": null
+    },
+    "ram": {
+      "totalGB": 15.69,
+      "libreGB": 1.98,
+      "usoGB": 13.71,
+      "porcentaje": 87.37
+    },
+    "discos": [
+      {
+        "disco": "C:",
+        "tamañoGB": 473.77,
+        "usadoGB": 231.22,
+        "porcentaje": 48.8
+      }
+    ],
+    "sistema": {
+      "idDispositivo": "1SGZN54",
+      "idProducto": "1.25.1",
+      "especificacion": "25H2",
+      "edicion": "Microsoft Windows 11 Pro",
+      "version": "10.0.26200",
+      "build": "26200"
+    },
+    "ubicacion": {
+      "ciudad": "Jesús María",
+      "region": "Aguascalientes",
+      "pais": null
+    },
+    "fecha": "2026-04-06T15:40:02.441Z",
+    "status": "online",
+    "lastSeen": "2026-04-14T18:56:26.432Z"
+  }
+}
