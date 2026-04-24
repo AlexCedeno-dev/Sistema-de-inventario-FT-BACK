@@ -1,59 +1,51 @@
 const { crearConexion, crearConexionOld } = require('../configs/db');
 
 async function obtenerInventarioNuevo() {
-  const db = await crearConexion();
+    const db = await crearConexion();
 
-  try {
-    const [rows] = await db.execute(`
-      SELECT
-        e.equipo_id,
-        e.empleado_id,
-        e.marca_id,
-        e.tipo,
-        e.service_tag,
-        e.serial_number,
-        e.fecha_compra,
-        e.fecha_asig,
-        e.nombre_equipo,
-        e.hostname_detectado,
-        e.agente_device_id,
-        e.registrado_desde,
-        e.estado_registro,
-        e.fecha_deteccion,
-        e.fecha_ultima_conexion,
-        e.specs,
-        e.start_warranty,
-        e.end_warranty,
-        e.po_number,
-        e.oa_number,
-        md.marca,
-        md.modelo,
-        emp.nombre_completo,
-        emp.status,
-        emp.departamento,
-        emp.planta,
-        de.nombre_archivo AS carta_responsiva,
-        de.ruta_archivo AS ruta_carta_responsiva
-      FROM equipos e
-      LEFT JOIN empleados emp
-        ON emp.empleado_id = e.empleado_id
-      LEFT JOIN marca_dispositivos md
-        ON md.marca_id = e.marca_id
-      LEFT JOIN (
-        SELECT d1.*
-        FROM documentos_equipo d1
-        INNER JOIN (
-          SELECT equipo_id, MAX(documento_id) AS max_id
-          FROM documentos_equipo
-          WHERE tipo_documento = 'RESPONSIVA_FIRMADA'
-          GROUP BY equipo_id
-        ) d2
-          ON d1.documento_id = d2.max_id
-      ) de
-        ON de.equipo_id = e.equipo_id
-      ORDER BY e.equipo_id DESC
-    `);
-
+      try {
+      const [rows] = await db.execute(`
+        SELECT
+          e.equipo_id,
+          e.empleado_id,
+          e.marca_id,
+          e.tipo,
+          e.service_tag,
+          e.nombre_equipo,
+          e.fecha_asig,
+          e.specs,
+          e.end_warranty,
+          emp.nombre_completo,
+          emp.status,
+          emp.departamento,
+          emp.planta,
+          md.marca,
+          md.modelo,
+          resp.nombre_archivo AS carta_responsiva,
+          resp.ruta_archivo AS ruta_carta_responsiva,
+          bit.nombre_archivo AS bitlocker,
+          bit.ruta_archivo AS ruta_bitlocker
+        FROM equipos e
+        LEFT JOIN empleados emp
+          ON emp.empleado_id = e.empleado_id
+        LEFT JOIN marca_dispositivos md
+          ON md.marca_id = e.marca_id
+        LEFT JOIN documentos_equipo resp
+          ON resp.documento_id = (
+            SELECT MAX(d.documento_id)
+            FROM documentos_equipo d
+            WHERE d.equipo_id = e.equipo_id
+              AND d.tipo_documento = 'RESPONSIVA_FIRMADA'
+          )
+        LEFT JOIN documentos_equipo bit
+          ON bit.documento_id = (
+            SELECT MAX(d.documento_id)
+            FROM documentos_equipo d
+            WHERE d.equipo_id = e.equipo_id
+              AND d.tipo_documento = 'BITLOCKER'
+          )
+        ORDER BY e.equipo_id DESC
+      `);
     return rows;
   } finally {
     await db.end();
@@ -172,10 +164,108 @@ async function obtenerDocumentoResponsivaPorEquipoId(equipoId) {
   }
 }
 
+async function obtenerDocumentoBitlockerPorEquipoId(equipoId) {
+  const db = await crearConexion();
+
+  try {
+    const [rows] = await db.execute(`
+      SELECT documento_id, nombre_archivo, ruta_archivo, fecha_subida
+      FROM documentos_equipo
+      WHERE equipo_id = ?
+        AND tipo_documento = 'BITLOCKER'
+      ORDER BY fecha_subida DESC
+      LIMIT 1
+    `, [equipoId]);
+
+    return rows;
+  } finally {
+    await db.end();
+  }
+}
+
+async function insertarFirmaPendiente({ equipoId, token, entregadoPor }) {
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(`
+      INSERT INTO firmas_pendientes (
+        equipo_id,
+        token,
+        entregado_por,
+        estado
+      )
+      VALUES (?, ?, ?, 'PENDIENTE')
+    `, [equipoId, token, entregadoPor]);
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
+async function obtenerFirmaPendientePorToken(token) {
+  const db = await crearConexion();
+
+  try {
+    const [rows] = await db.execute(`
+      SELECT
+        fp.firma_id,
+        fp.equipo_id,
+        fp.token,
+        fp.entregado_por,
+        fp.estado,
+        e.service_tag,
+        e.tipo,
+        e.nombre_equipo,
+        e.specs,
+        md.marca,
+        md.modelo,
+        emp.nombre_completo,
+        emp.departamento,
+        emp.planta
+      FROM firmas_pendientes fp
+      INNER JOIN equipos e
+        ON e.equipo_id = fp.equipo_id
+      LEFT JOIN empleados emp
+        ON emp.empleado_id = e.empleado_id
+      LEFT JOIN marca_dispositivos md
+        ON md.marca_id = e.marca_id
+      WHERE fp.token = ?
+      LIMIT 1
+    `, [token]);
+
+    return rows;
+  } finally {
+    await db.end();
+  }
+}
+
+async function marcarFirmaComoCompletada(token) {
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(`
+      UPDATE firmas_pendientes
+      SET estado = 'FIRMADO',
+          fecha_firma = CURRENT_TIMESTAMP
+      WHERE token = ?
+    `, [token]);
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
 module.exports = {
   obtenerInventarioNuevo,
   obtenerInventarioViejo,
   obtenerDatosResponsivaPorEquipoId,
   insertarDocumentoEquipo,
-  obtenerDocumentoResponsivaPorEquipoId
+  obtenerDocumentoResponsivaPorEquipoId,
+  obtenerDocumentoBitlockerPorEquipoId,
+  insertarFirmaPendiente,
+  obtenerFirmaPendientePorToken,
+  marcarFirmaComoCompletada
+
 };

@@ -286,6 +286,24 @@ async function eliminarDocumentosPorEquipoId(equipoId) {
     }
 }
 
+async function eliminarFirmasPendientesPorEquipoId(equipoId) {
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(
+      `
+      DELETE FROM firmas_pendientes
+      WHERE equipo_id = ?
+      `,
+      [equipoId]
+    );
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
 module.exports = {
   buscarEquipoPorServiceTag,
   buscarEmpleadoPorNombre,
@@ -299,5 +317,6 @@ module.exports = {
   liberarMonitoreoPorEquipoId,
   eliminarDatosWindowsPorEquipoId,
   eliminarEquipoPorId,
-  eliminarDocumentosPorEquipoId
+  eliminarDocumentosPorEquipoId,
+  eliminarFirmasPendientesPorEquipoId,
 };

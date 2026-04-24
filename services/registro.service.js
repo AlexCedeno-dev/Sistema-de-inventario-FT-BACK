@@ -109,10 +109,11 @@ async function liberarEquipo(equipoId) {
         throw error;
     }
 
-    await registroModel.liberarMonitoreoPorEquipoId(equipoId);
-    await registroModel.eliminarDatosWindowsPorEquipoId(equipoId);
-    await registroModel.eliminarDocumentosPorEquipoId(equipoId);
-    await registroModel.eliminarEquipoPorId(equipoId);
+        await registroModel.liberarMonitoreoPorEquipoId(equipoId);
+        await registroModel.eliminarDatosWindowsPorEquipoId(equipoId);
+        await registroModel.eliminarDocumentosPorEquipoId(equipoId);
+        await registroModel.eliminarFirmasPendientesPorEquipoId(equipoId);
+        await registroModel.eliminarEquipoPorId(equipoId);
 
     return {
         status: 'ok',
