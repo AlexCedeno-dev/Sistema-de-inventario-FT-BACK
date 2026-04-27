@@ -304,6 +304,139 @@ async function eliminarFirmasPendientesPorEquipoId(equipoId) {
   }
 }
 
+async function crearAccesoEquipo(empleadoId, licenciaOffice = null) {
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(
+      
+      `
+      INSERT INTO licencias_accesos (
+        empleado_id,
+        licencia_office
+      )
+      VALUES (?, ?)
+      `,
+      [
+        empleadoId,
+        licenciaOffice || null
+      ]
+    );
+
+    return result.insertId;
+  } finally {
+    await db.end();
+  }
+}
+
+async function insertarLicenciaEnrollado(empleadoId, data) {
+  const accesoId = await crearAccesoEquipo(empleadoId, data.licencia_office);
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(
+      `
+      INSERT INTO licencia_enrrolado (
+        acceso_id,
+        correo_enrrolado,
+        password_enrrolado
+      )
+      VALUES (?, ?, ?)
+      `,
+      [
+        accesoId,
+        data.correo_enrrolado || null,
+        data.password_enrrolado || null
+      ]
+    );
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
+async function insertarLicenciaNas(empleadoId, data) {
+  const accesoId = await crearAccesoEquipo(empleadoId);
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(
+      `
+      INSERT INTO licencia_nas (
+        acceso_id,
+        usuario_nas,
+        password_nas
+      )
+      VALUES (?, ?, ?)
+      `,
+      [
+        accesoId,
+        data.usuario_nas || null,
+        data.password_nas || null
+      ]
+    );
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
+async function insertarLicenciaVpn(empleadoId, data) {
+  const accesoId = await crearAccesoEquipo(empleadoId);
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(
+      `
+      INSERT INTO licencia_vpn (
+        acceso_id,
+        usuario_vpn,
+        password_vpn
+      )
+      VALUES (?, ?, ?)
+      `,
+      [
+        accesoId,
+        data.usuario_vpn || null,
+        data.password_vpn || null
+      ]
+    );
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
+async function insertarLicenciaOsticket(empleadoId, data) {
+  const accesoId = await crearAccesoEquipo(empleadoId);
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(
+      `
+      INSERT INTO licencia_osticket (
+        acceso_id,
+        usuario_osticket,
+        password_osticket
+      )
+      VALUES (?, ?, ?)
+      `,
+      [
+        accesoId,
+        data.usuario_osticket || null,
+        data.password_osticket || null
+      ]
+    );
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
 module.exports = {
   buscarEquipoPorServiceTag,
   buscarEmpleadoPorNombre,
@@ -312,6 +445,12 @@ module.exports = {
   insertarMarcaModelo,
   insertarEquipo,
   insertarDatosWindows,
+
+  insertarLicenciaEnrollado,
+  insertarLicenciaNas,
+  insertarLicenciaVpn,
+  insertarLicenciaOsticket,
+
   actualizarMonitoreoDespuesRegistro,
   buscarEquipoPorId,
   liberarMonitoreoPorEquipoId,

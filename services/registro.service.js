@@ -6,7 +6,8 @@ async function registrarEquipo(body) {
         monitoreo_id,
         empleado,
         equipo,
-        windows
+        windows,
+        accesos
     } = body;
 
     if (!equipo?.service_tag) {
@@ -82,6 +83,35 @@ async function registrarEquipo(body) {
 
     if (windows) {
         await registroModel.insertarDatosWindows(equipoId, windows);
+    }
+
+    if (windows?.correoEnrollado || windows?.passwordEnrollado) {
+        await registroModel.insertarLicenciaEnrollado(empleadoId, {
+        correo_enrrolado: windows.correoEnrollado,
+        password_enrrolado: windows.passwordEnrollado,
+        licencia_office: equipo.licencia_office
+    });
+    }
+
+    if (accesos?.usuarioNAS || accesos?.passwordNAS) {
+        await registroModel.insertarLicenciaNas(empleadoId, {
+            usuario_nas: accesos.usuarioNAS,
+            password_nas: accesos.passwordNAS
+        });
+    }
+
+    if (accesos?.usuarioVPN || accesos?.passwordVPN) {
+        await registroModel.insertarLicenciaVpn(empleadoId, {
+            usuario_vpn: accesos.usuarioVPN,
+            password_vpn: accesos.passwordVPN
+        });
+    }
+
+    if (accesos?.usuarioOsticket || accesos?.passwordOsticket) {
+        await registroModel.insertarLicenciaOsticket(empleadoId, {
+            usuario_osticket: accesos.usuarioOsticket,
+            password_osticket: accesos.passwordOsticket
+        });
     }
 
     if (monitoreo_id) {

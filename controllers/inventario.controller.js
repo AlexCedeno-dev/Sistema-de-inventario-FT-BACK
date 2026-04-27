@@ -451,13 +451,12 @@ async function postGuardarFirmaToken(req,res){
    rutaArchivo
  );
 
- const doc=
- await crearResponsivaPDF({
-   data,
-   entregadoPor:
-   firmaData.entregado_por,
+ const doc= await crearResponsivaPDF({
+      data,
+      entregadoPor:
+      firmaData.entregado_por,
 
-   firmaReceptorBase64,
+      firmaReceptorBase64,
    output:stream
  });
 

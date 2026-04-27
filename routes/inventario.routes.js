@@ -9,16 +9,9 @@ router.get('/inventario-viejo', inventarioController.getInventarioViejo);
 
 router.get('/equipos/:equipoId/responsiva-pdf', inventarioController.getResponsivaPDF);
 
-router.post(
-  '/equipos/:equipoId/responsiva-firmada',
-  uploadResponsiva.single('archivo'),
-  inventarioController.postSubirResponsivaFirmada
-);
+router.post('/equipos/:equipoId/responsiva-firmada', uploadResponsiva.single('archivo'), inventarioController.postSubirResponsivaFirmada);
 
-router.get(
-  '/equipos/:equipoId/responsiva-firmada',
-  inventarioController.getResponsivaFirmada
-);
+router.get('/equipos/:equipoId/responsiva-firmada', inventarioController.getResponsivaFirmada);
 
 router.post(
   '/equipos/:equipoId/responsiva-firma-digital',
