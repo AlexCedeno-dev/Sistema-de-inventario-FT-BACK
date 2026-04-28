@@ -110,14 +110,14 @@ async function insertarEquipo(data) {
         tipo,
         service_tag,
         nombre_equipo,
+        bios_password,
         specs,
-        bios_password,  
         fecha_compra,
         fecha_asig,
         start_warranty,
         end_warranty
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         data.empleadoId,
@@ -125,8 +125,8 @@ async function insertarEquipo(data) {
         data.tipo,
         data.service_tag,
         data.nombre_equipo,
-        data.specs,
         data.bios_password,
+        data.specs,
         data.fecha_compra,
         data.fecha_asig,
         data.start_warranty,

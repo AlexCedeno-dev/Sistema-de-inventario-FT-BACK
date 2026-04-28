@@ -67,17 +67,17 @@ async function registrarEquipo(body) {
 
 
     const equipoResult = await registroModel.insertarEquipo({
-    empleadoId,
-    marcaId,
-    tipo: equipo.tipo,
-    service_tag: equipo.service_tag,
-    nombre_equipo: equipo.nombre_equipo,
-    specs: equipo.specs,
-    bios_password: equipo.bios_password,
-    fecha_compra: fechaCompraFinal,
-    fecha_asig: fechaAsignacionFinal,
-    start_warranty: equipo.start_warranty,
-    end_warranty: equipo.end_warranty
+        empleadoId,
+        marcaId,
+        tipo: equipo.tipo,
+        service_tag: equipo.service_tag,
+        nombre_equipo: equipo.nombre_equipo,
+        bios_password: equipo.bios_password,
+        specs: equipo.specs,
+        fecha_compra: fechaCompraFinal,
+        fecha_asig: fechaAsignacionFinal,
+        start_warranty: equipo.start_warranty,
+        end_warranty: equipo.end_warranty
     });
 
     const equipoId = equipoResult.insertId;
