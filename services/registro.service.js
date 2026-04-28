@@ -73,6 +73,7 @@ async function registrarEquipo(body) {
     service_tag: equipo.service_tag,
     nombre_equipo: equipo.nombre_equipo,
     specs: equipo.specs,
+    bios_password: equipo.bios_password,
     fecha_compra: fechaCompraFinal,
     fecha_asig: fechaAsignacionFinal,
     start_warranty: equipo.start_warranty,
@@ -151,7 +152,59 @@ async function liberarEquipo(equipoId) {
         liberado: true
     };
 }
+
+async function actualizarEquipo(equipoId, body) {
+    if (!Number.isInteger(equipoId) || equipoId <= 0) {
+        const error = new Error('ID de equipo inválido');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const rows = await registroModel.buscarEquipoPorId(equipoId);
+
+    if (!rows.length) {
+        const error = new Error('Equipo no encontrado');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const empleadoId = rows[0].empleado_id;
+
+    await registroModel.actualizarEquipoCompleto(equipoId, empleadoId, body);
+
+    return {
+        status: 'ok',
+        equipo_id: equipoId,
+        actualizado: true
+    };
+}
+
+async function obtenerDetalleEquipo(equipoId){
+
+ if(!Number.isInteger(equipoId) || equipoId<=0){
+   const error =
+   new Error('ID inválido');
+   error.statusCode=400;
+   throw error;
+ }
+
+ const rows =
+ await registroModel.obtenerDetalleEquipo(
+   equipoId
+ );
+
+ if(!rows.length){
+   const error =
+   new Error('Equipo no encontrado');
+   error.statusCode=404;
+   throw error;
+ }
+
+ return rows[0];
+}
 module.exports = {
   registrarEquipo,
-  liberarEquipo
+  liberarEquipo,
+  actualizarEquipo,
+  obtenerDetalleEquipo
 };

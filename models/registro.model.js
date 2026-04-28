@@ -111,6 +111,7 @@ async function insertarEquipo(data) {
         service_tag,
         nombre_equipo,
         specs,
+        bios_password,  
         fecha_compra,
         fecha_asig,
         start_warranty,
@@ -125,6 +126,7 @@ async function insertarEquipo(data) {
         data.service_tag,
         data.nombre_equipo,
         data.specs,
+        data.bios_password,
         data.fecha_compra,
         data.fecha_asig,
         data.start_warranty,
@@ -330,7 +332,7 @@ async function crearAccesoEquipo(empleadoId, licenciaOffice = null) {
 }
 
 async function insertarLicenciaEnrollado(empleadoId, data) {
-  const accesoId = await crearAccesoEquipo(empleadoId, data.licencia_office);
+const accesoId = await obtenerOCrearAccesoEmpleado(empleadoId, data.licencia_office);
   const db = await crearConexion();
 
   try {
@@ -357,7 +359,7 @@ async function insertarLicenciaEnrollado(empleadoId, data) {
 }
 
 async function insertarLicenciaNas(empleadoId, data) {
-  const accesoId = await crearAccesoEquipo(empleadoId);
+  const accesoId = await obtenerOCrearAccesoEmpleado(empleadoId);
   const db = await crearConexion();
 
   try {
@@ -384,7 +386,7 @@ async function insertarLicenciaNas(empleadoId, data) {
 }
 
 async function insertarLicenciaVpn(empleadoId, data) {
-  const accesoId = await crearAccesoEquipo(empleadoId);
+  const accesoId = await obtenerOCrearAccesoEmpleado(empleadoId);
   const db = await crearConexion();
 
   try {
@@ -411,7 +413,7 @@ async function insertarLicenciaVpn(empleadoId, data) {
 }
 
 async function insertarLicenciaOsticket(empleadoId, data) {
-  const accesoId = await crearAccesoEquipo(empleadoId);
+  const accesoId = await obtenerOCrearAccesoEmpleado(empleadoId);
   const db = await crearConexion();
 
   try {
@@ -437,6 +439,298 @@ async function insertarLicenciaOsticket(empleadoId, data) {
   }
 }
 
+async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
+  const db = await crearConexion();
+
+  try {
+
+    await db.execute(`
+      UPDATE empleados
+      SET nombre_completo = ?,
+          departamento = ?,
+          planta = ?
+      WHERE empleado_id = ?
+    `,[
+      body.empleado.nombre_completo,
+      body.empleado.departamento,
+      body.empleado.planta,
+      empleadoId
+    ]);
+
+    await db.execute(`
+      UPDATE equipos
+      SET tipo = ?,
+          service_tag = ?,
+          nombre_equipo = ?,
+          bios_password = ?,
+          specs = ?,
+          fecha_compra = ?,
+          fecha_asig = ?,
+          start_warranty = ?,
+          end_warranty = ?
+      WHERE equipo_id = ?
+    `,[
+      body.equipo.tipo,
+      body.equipo.service_tag,
+      body.equipo.nombre_equipo,
+      body.equipo.bios_password,
+      body.equipo.specs,
+      body.equipo.fecha_compra,
+      body.equipo.fecha_asig,
+      body.equipo.start_warranty,
+      body.equipo.end_warranty,
+      equipoId
+    ]);
+
+    await db.execute(`
+      UPDATE datos_windows
+      SET local_user_windows=?,
+          password_windows=?,
+          usuario_admin=?,
+          password_admin=?
+      WHERE equipo_id=?
+    `,[
+      body.windows.usuarioWindows,
+      body.windows.passwordWindows,
+      body.windows.usuarioAdmin,
+      body.windows.passwordAdmin,
+      equipoId
+    ]);
+
+    const [accRows] = await db.execute(`
+      SELECT acceso_id
+      FROM licencias_accesos
+      WHERE empleado_id=?
+      LIMIT 1
+    `,[empleadoId]);
+
+    if(accRows.length){
+      const accesoId = accRows[0].acceso_id;
+
+      await db.execute(`
+       UPDATE licencias_accesos
+       SET licencia_office=?
+       WHERE acceso_id=?
+      `,[
+       body.equipo.licencia_office,
+       accesoId
+      ]);
+
+      await db.execute(`
+       UPDATE licencia_enrrolado
+       SET correo_enrrolado=?,
+           password_enrrolado=?
+       WHERE acceso_id=?
+      `,[
+       body.windows.correoEnrollado,
+       body.windows.passwordEnrollado,
+       accesoId
+      ]);
+
+      await db.execute(`
+       UPDATE licencia_nas
+       SET usuario_nas=?,
+           password_nas=?
+       WHERE acceso_id=?
+      `,[
+       body.accesos.usuarioNAS,
+       body.accesos.passwordNAS,
+       accesoId
+      ]);
+
+      await db.execute(`
+       UPDATE licencia_vpn
+       SET usuario_vpn=?,
+           password_vpn=?
+       WHERE acceso_id=?
+      `,[
+       body.accesos.usuarioVPN,
+       body.accesos.passwordVPN,
+       accesoId
+      ]);
+
+      await db.execute(`
+       UPDATE licencia_osticket
+       SET usuario_osticket=?,
+           password_osticket=?
+       WHERE acceso_id=?
+      `,[
+       body.accesos.usuarioOsticket,
+       body.accesos.passwordOsticket,
+       accesoId
+      ]);
+    }
+
+    return {status:'ok'};
+
+  } finally {
+    await db.end();
+  }
+}
+
+async function obtenerOCrearAccesoEmpleado(empleadoId, licenciaOffice = null) {
+  const db = await crearConexion();
+
+  try {
+    const [rows] = await db.execute(
+      `
+      SELECT acceso_id
+      FROM licencias_accesos
+      WHERE empleado_id = ?
+      ORDER BY acceso_id DESC
+      LIMIT 1
+      `,
+      [empleadoId]
+    );
+
+    if (rows.length > 0) {
+      const accesoId = rows[0].acceso_id;
+
+      if (licenciaOffice) {
+        await db.execute(
+          `
+          UPDATE licencias_accesos
+          SET licencia_office = ?
+          WHERE acceso_id = ?
+          `,
+          [licenciaOffice, accesoId]
+        );
+      }
+
+      return accesoId;
+    }
+
+    const [result] = await db.execute(
+      `
+      INSERT INTO licencias_accesos (
+        empleado_id,
+        licencia_office
+      )
+      VALUES (?, ?)
+      `,
+      [empleadoId, licenciaOffice || null]
+    );
+
+    return result.insertId;
+  } finally {
+    await db.end();
+  }
+}
+
+async function obtenerDetalleEquipo(equipoId) {
+  const db = await crearConexion();
+
+    try {
+      const [equipoRows] = await db.execute(`
+        SELECT
+          e.equipo_id,
+          e.empleado_id,
+          e.tipo,
+          e.service_tag,
+          e.nombre_equipo,
+          e.bios_password,
+          e.specs,
+          DATE_FORMAT(e.fecha_compra,'%Y-%m-%d') AS fecha_compra,
+          DATE_FORMAT(e.fecha_asig,'%Y-%m-%d') AS fecha_asig,
+          DATE_FORMAT(e.start_warranty,'%Y-%m-%d') AS start_warranty,
+          DATE_FORMAT(e.end_warranty,'%Y-%m-%d') AS end_warranty,
+
+          emp.nombre_completo,
+          emp.departamento,
+          emp.planta,
+
+          md.marca,
+          md.modelo
+        FROM equipos e
+        LEFT JOIN empleados emp
+          ON emp.empleado_id = e.empleado_id
+        LEFT JOIN marca_dispositivos md
+          ON md.marca_id = e.marca_id
+        WHERE e.equipo_id = ?
+        LIMIT 1
+      `, [equipoId]);
+
+      if (!equipoRows.length) return [];
+
+      const equipo = equipoRows[0];
+      const empleadoId = equipo.empleado_id;
+
+      const [windowsRows] = await db.execute(`
+        SELECT
+          local_user_windows,
+          password_windows,
+          usuario_admin,
+          password_admin
+        FROM datos_windows
+        WHERE equipo_id = ?
+        LIMIT 1
+      `, [equipoId]);
+
+      const [accesoRows] = await db.execute(`
+        SELECT acceso_id, licencia_office
+        FROM licencias_accesos
+        WHERE empleado_id = ?
+        ORDER BY acceso_id DESC
+        LIMIT 1
+      `, [empleadoId]);
+
+      const acceso = accesoRows[0] || null;
+      const accesoId = acceso?.acceso_id || null;
+
+      let enrrolado = {};
+      let nas = {};
+      let vpn = {};
+      let osticket = {};
+
+      if (accesoId) {
+        const [enrroladoRows] = await db.execute(`
+          SELECT correo_enrrolado, password_enrrolado
+          FROM licencia_enrrolado
+          WHERE acceso_id = ?
+          LIMIT 1
+        `, [accesoId]);
+
+        const [nasRows] = await db.execute(`
+          SELECT usuario_nas, password_nas
+          FROM licencia_nas
+          WHERE acceso_id = ?
+          LIMIT 1
+        `, [accesoId]);
+
+        const [vpnRows] = await db.execute(`
+          SELECT usuario_vpn, password_vpn
+          FROM licencia_vpn
+          WHERE acceso_id = ?
+          LIMIT 1
+        `, [accesoId]);
+
+        const [osticketRows] = await db.execute(`
+          SELECT usuario_osticket, password_osticket
+          FROM licencia_osticket
+          WHERE acceso_id = ?
+          LIMIT 1
+        `, [accesoId]);
+
+        enrrolado = enrroladoRows[0] || {};
+        nas = nasRows[0] || {};
+        vpn = vpnRows[0] || {};
+        osticket = osticketRows[0] || {};
+      }
+
+      return [{
+        ...equipo,
+        ...(windowsRows[0] || {}),
+        licencia_office: acceso?.licencia_office || null,
+        ...enrrolado,
+        ...nas,
+        ...vpn,
+        ...osticket
+      }];
+    } finally {
+      await db.end();
+    }
+}
+
 module.exports = {
   buscarEquipoPorServiceTag,
   buscarEmpleadoPorNombre,
@@ -458,4 +752,7 @@ module.exports = {
   eliminarEquipoPorId,
   eliminarDocumentosPorEquipoId,
   eliminarFirmasPendientesPorEquipoId,
+  actualizarEquipoCompleto,
+
+  obtenerDetalleEquipo,
 };

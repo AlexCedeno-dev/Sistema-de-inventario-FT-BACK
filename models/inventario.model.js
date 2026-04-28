@@ -1,51 +1,52 @@
 const { crearConexion, crearConexionOld } = require('../configs/db');
 
 async function obtenerInventarioNuevo() {
-    const db = await crearConexion();
+  const db = await crearConexion();
 
-      try {
-      const [rows] = await db.execute(`
-        SELECT
-          e.equipo_id,
-          e.empleado_id,
-          e.marca_id,
-          e.tipo,
-          e.service_tag,
-          e.nombre_equipo,
-          e.fecha_asig,
-          e.specs,
-          e.end_warranty,
-          emp.nombre_completo,
-          emp.status,
-          emp.departamento,
-          emp.planta,
-          md.marca,
-          md.modelo,
-          resp.nombre_archivo AS carta_responsiva,
-          resp.ruta_archivo AS ruta_carta_responsiva,
-          bit.nombre_archivo AS bitlocker,
-          bit.ruta_archivo AS ruta_bitlocker
-        FROM equipos e
-        LEFT JOIN empleados emp
-          ON emp.empleado_id = e.empleado_id
-        LEFT JOIN marca_dispositivos md
-          ON md.marca_id = e.marca_id
-        LEFT JOIN documentos_equipo resp
-          ON resp.documento_id = (
-            SELECT MAX(d.documento_id)
-            FROM documentos_equipo d
-            WHERE d.equipo_id = e.equipo_id
-              AND d.tipo_documento = 'RESPONSIVA_FIRMADA'
-          )
-        LEFT JOIN documentos_equipo bit
-          ON bit.documento_id = (
-            SELECT MAX(d.documento_id)
-            FROM documentos_equipo d
-            WHERE d.equipo_id = e.equipo_id
-              AND d.tipo_documento = 'BITLOCKER'
-          )
-        ORDER BY e.equipo_id DESC
-      `);
+  try {
+    const [rows] = await db.execute(`
+      SELECT
+        e.equipo_id,
+        e.empleado_id,
+        e.marca_id,
+        e.tipo,
+        e.service_tag,
+        e.nombre_equipo,
+        e.fecha_asig,
+        e.specs,
+        e.end_warranty,
+        emp.nombre_completo,
+        emp.status,
+        emp.departamento,
+        emp.planta,
+        md.marca,
+        md.modelo,
+        resp.nombre_archivo AS carta_responsiva,
+        resp.ruta_archivo AS ruta_carta_responsiva,
+        bit.nombre_archivo AS bitlocker,
+        bit.ruta_archivo AS ruta_bitlocker
+      FROM equipos e
+      LEFT JOIN empleados emp
+        ON emp.empleado_id = e.empleado_id
+      LEFT JOIN marca_dispositivos md
+        ON md.marca_id = e.marca_id
+      LEFT JOIN documentos_equipo resp
+        ON resp.documento_id = (
+          SELECT MAX(d.documento_id)
+          FROM documentos_equipo d
+          WHERE d.equipo_id = e.equipo_id
+            AND d.tipo_documento = 'RESPONSIVA_FIRMADA'
+        )
+      LEFT JOIN documentos_equipo bit
+        ON bit.documento_id = (
+          SELECT MAX(d.documento_id)
+          FROM documentos_equipo d
+          WHERE d.equipo_id = e.equipo_id
+            AND d.tipo_documento = 'BITLOCKER'
+        )
+      ORDER BY e.equipo_id DESC
+    `);
+
     return rows;
   } finally {
     await db.end();
