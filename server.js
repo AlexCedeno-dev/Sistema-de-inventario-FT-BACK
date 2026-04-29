@@ -1,4 +1,6 @@
 const path = require('path');
+const fs = require("fs");
+const archiver = require("archiver");
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
@@ -33,6 +35,51 @@ app.get(/^\/inventory-it\/.*/, (req, res) => {
 app.use('/', routes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.get("/api/nodeguard/agent-pack", (req, res) => {
+  try {
+    const packDir = path.join(__dirname, "agent-pack");
+
+    if (!fs.existsSync(packDir)) {
+      return res.status(404).json({
+        error: "No existe la carpeta agent-pack en el servidor.",
+      });
+    }
+
+    const fileName = "NodeGuardAgentSERVER_Pack.zip";
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+
+    const archive = archiver("zip", {
+      zlib: { level: 9 },
+    });
+
+    archive.on("error", (err) => {
+      console.error("Error generando ZIP:", err);
+
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: "Error generando el paquete del agente.",
+        });
+      }
+
+      res.end();
+    });
+
+    archive.pipe(res);
+
+    // Comprime todo lo que esté dentro de agent-pack
+    archive.directory(packDir, false);
+
+    archive.finalize();
+  } catch (error) {
+    console.error("Error en descarga del agente:", error);
+    res.status(500).json({
+      error: "Error interno al descargar el paquete del agente.",
+    });
+  }
+});
 
 app.get('/', (req, res) => res.send('Servidor activo'));
 
