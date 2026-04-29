@@ -322,6 +322,17 @@ async function generarLinkFirma({ equipoId, entregadoPor, tipoEntregador, baseUr
     throw error;
   }
 
+    const responsivaExistente =
+    await inventarioModel.obtenerDocumentoResponsivaPorEquipoId(id);
+
+    if (responsivaExistente?.length > 0) {
+    const error = new Error(
+      'Ya existe una responsiva firmada para este equipo'
+    );
+    error.statusCode = 409;
+    throw error;
+    }
+
   const token = crypto.randomBytes(32).toString('hex');
 
     await inventarioModel.insertarFirmaPendiente({
