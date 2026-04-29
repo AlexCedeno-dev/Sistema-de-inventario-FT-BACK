@@ -1,218 +1,254 @@
-    # MANUAL DE INSTALACIÓN - NODEGUARD AGENT SERVER
+# GUÍA DE INSTALACIÓN - NODEGUARD AGENT
 
-    Este paquete contiene los archivos necesarios para instalar el agente NodeGuard en una computadora Windows.
+Objetivo:
+Instalar el agente NodeGuard en una computadora Windows para que se ejecute en segundo plano como servicio de Windows.
 
-    El agente se instalará como servicio de Windows para que:
+El agente debe quedar:
 
-    * Inicie automáticamente con Windows.
-    * Corra en segundo plano.
-    * No abra ventana de CMD.
-    * Se pueda revisar desde services.msc o Administrador de tareas.
-    * Genere logs para soporte.
+* Ejecutándose automáticamente con Windows.
+* Sin abrir ventana de CMD.
+* Visible en Administrador de tareas.
+* Visible como servicio de Windows.
+* Reportando al dashboard de NodeGuard.
 
-    IMPORTANTE:
-    Instalar únicamente en equipos autorizados por la empresa o el área de TI.
+IMPORTANTE:
+Este procedimiento debe realizarlo únicamente personal autorizado del área de TI.
 
-    ## CONTENIDO DEL PAQUETE
+## ARCHIVOS DEL PAQUETE
 
-    El archivo ZIP debe contener algo similar a esto:
+Al descargar y descomprimir el ZIP, la carpeta debe contener archivos similares a estos:
 
-    NodeGuardAgentSERVER_Pack.zip
-    │
-    ├─ NodeGuardAgentSERVER.exe
-    ├─ install-nodeguard.ps1
-    ├─ Manual_Instalacion_NodeGuardAgentSERVER.txt
-    └─ tools
-    └─ nssm.exe
+NodeGuardAgentSERVER_Pack
+│
+├─ NodeGuardAgentSERVER.exe
+├─ install-nodeguard.ps1
+├─ Manual_Instalacion_NodeGuardAgentSERVER.txt
+└─ tools
+└─ nssm.exe
 
-    ## REQUISITOS
+Nota:
+El nombre del agente puede variar dependiendo de la versión, por ejemplo:
 
-    Antes de instalar, verificar:
+NodeGuardAgentSERVER.exe
+NodeGuardAgent.exe
 
-    1. Tener permisos de administrador en la computadora.
-    2. Tener conexión a la red de la empresa.
-    3. Extraer el ZIP antes de ejecutar el instalador.
-    4. Ejecutar PowerShell como administrador.
+Usar siempre el archivo .exe que viene dentro del paquete descargado.
 
-    ## PASOS DE INSTALACIÓN
+## PASOS DE INSTALACIÓN
 
-    1. Descargar el paquete ZIP desde la página de Agentes de NodeGuard.
+1. Descargar el paquete desde la página de Agentes
 
-    2. Descomprimir el archivo ZIP.
+Desde la página de Agentes de NodeGuard, dar clic en el botón para descargar el paquete del agente.
 
-    Ejemplo:
-    C:\Users\Usuario\Downloads\NodeGuardAgentSERVER_Pack
+Se descargará un archivo .ZIP.
 
-    3. Abrir la carpeta descomprimida.
+2. Descomprimir el archivo ZIP
 
-    4. Dar clic derecho dentro de la carpeta y seleccionar:
+Dar clic derecho sobre el archivo .ZIP y seleccionar:
 
-    Abrir en Terminal
+Extraer todo
 
-    O abrir PowerShell como administrador y entrar manualmente a la carpeta.
+No importa en qué carpeta se descomprima, puede ser en Descargas, Escritorio u otra ubicación temporal.
 
-    5. Ejecutar PowerShell como administrador.
+IMPORTANTE:
+No ejecutar los archivos directamente desde el ZIP. Primero se debe descomprimir.
 
-    6. Permitir la ejecución temporal del script con este comando:
+3. Ejecutar el instalador como administrador
 
-    Set-ExecutionPolicy -Scope Process Bypass -Force
+Dentro de la carpeta descomprimida, buscar el archivo:
 
-    7. Ejecutar el instalador:
+install-nodeguard.ps1
 
-    .\install-nodeguard.ps1
+Dar clic derecho sobre el archivo y seleccionar:
 
-    8. Esperar a que termine la instalación.
+Ejecutar con PowerShell
 
-    9. Al final debe aparecer el servicio como:
+Si Windows permite ejecutarlo correctamente, continuar con el proceso.
 
-    Running
+Nota:
+Es normal que la ventana de PowerShell se cierre después de ejecutar una parte del proceso.
 
-    ## RUTAS DONDE SE INSTALA
+4. Si el archivo se abre en Bloc de notas
 
-    El instalador copiará los archivos en estas rutas:
+Si al dar clic en install-nodeguard.ps1 se abre el Bloc de notas, hacer lo siguiente:
 
-    C:\NodeGuard\NodeGuardAgentSERVER.exe
-    C:\NodeGuard\logs
-    C:\Tools\nssm\nssm.exe
+1. Abrir PowerShell como administrador.
+2. Abrir el archivo install-nodeguard.ps1 con Bloc de notas.
+3. Copiar todo el contenido del script.
+4. Pegar el contenido en PowerShell.
+5. Presionar Enter.
 
-    El servicio de Windows se llamará:
+Para abrir PowerShell como administrador:
 
-    NodeGuardAgentSERVER
+1. Presionar Inicio.
 
-    ## VALIDAR QUE QUEDÓ INSTALADO
+2. Buscar PowerShell.
 
-    Opción 1: PowerShell
+3. Clic derecho.
 
-    Ejecutar:
+4. Seleccionar Ejecutar como administrador.
 
-    Get-Service NodeGuardAgentSERVER
+5. Validar que se crearon las carpetas
 
-    Debe aparecer:
+Ir al disco local C: y verificar que existan estas carpetas:
 
-    Running
+C:\Tools
+C:\NodeGuard
 
-    Opción 2: Administrador de tareas
+Si ambas carpetas existen, continuar con el siguiente paso.
 
-    Abrir:
+6. Copiar el agente a la carpeta NodeGuard
 
-    Ctrl + Shift + Esc
+Copiar el archivo del agente que viene dentro del ZIP, por ejemplo:
 
-    Buscar en la pestaña Detalles:
+NodeGuardAgentSERVER.exe
 
-    NodeGuardAgentSERVER.exe
+O según la versión:
 
-    Opción 3: Servicios de Windows
+NodeGuardAgent.exe
 
-    Presionar:
+Y pegarlo dentro de esta carpeta:
 
-    Win + R
+C:\NodeGuard
 
-    Escribir:
+La ruta final debe quedar similar a:
 
-    services.msc
+C:\NodeGuard\NodeGuardAgentSERVER.exe
 
-    Buscar:
+O:
 
-    NodeGuardAgentSERVER
+C:\NodeGuard\NodeGuardAgent.exe
 
-    Debe aparecer como:
+IMPORTANTE:
+No cambiar el nombre del archivo .exe, a menos que el script esté configurado para ese nombre.
 
-    En ejecución
+7. Ejecutar nuevamente el instalador
 
-    ## COMANDOS ÚTILES
+Después de copiar el .exe en C:\NodeGuard, ejecutar nuevamente el archivo:
 
-    Reiniciar el agente:
+install-nodeguard.ps1
 
-    Restart-Service NodeGuardAgentSERVER
+Se puede hacer de cualquiera de estas dos formas:
 
-    Detener el agente:
+Opción A:
+Clic derecho sobre install-nodeguard.ps1 y seleccionar Ejecutar con PowerShell.
 
-    Stop-Service NodeGuardAgentSERVER
+Opción B:
+Abrir PowerShell como administrador, copiar el contenido del script, pegarlo y presionar Enter.
 
-    Iniciar el agente:
+Esperar a que termine la instalación.
 
-    Start-Service NodeGuardAgentSERVER
+Al final debe aparecer el servicio con estado:
 
-    Ver estado:
+Running
 
-    Get-Service NodeGuardAgentSERVER
+Si aparece Running, la instalación fue correcta.
 
-    Ver si el proceso está activo:
+8. Validar en Administrador de tareas
 
-    Get-Process NodeGuardAgentSERVER -ErrorAction SilentlyContinue
+Abrir el Administrador de tareas:
 
-    ## REVISAR LOGS
+Ctrl + Shift + Esc
 
-    Logs normales:
+Ir a la pestaña:
 
-    Get-Content "C:\NodeGuard\logs\out.log" -Tail 50
+Detalles
 
-    Logs de error:
+Buscar el proceso del agente:
 
-    Get-Content "C:\NodeGuard\logs\error.log" -Tail 50
+NodeGuardAgentSERVER.exe
 
-    ## ACTUALIZAR EL AGENTE
+O según la versión:
 
-    Cuando exista una nueva versión de NodeGuardAgentSERVER.exe:
+NodeGuardAgent.exe
 
-    1. Detener el servicio:
+Si aparece en la lista, el agente está activo.
 
-    Stop-Service NodeGuardAgentSERVER
+9. Validar en servicios de Windows
 
-    2. Reemplazar el archivo:
+Presionar:
 
-    C:\NodeGuard\NodeGuardAgentSERVER.exe
+Win + R
 
-    3. Iniciar el servicio:
+Escribir:
 
-    Start-Service NodeGuardAgentSERVER
+services.msc
 
-    4. Validar que esté corriendo:
+Buscar el servicio:
 
-    Get-Service NodeGuardAgentSERVER
+NodeGuardAgentSERVER
 
-    ## DESINSTALAR EL AGENTE
+Debe aparecer como:
 
-    Ejecutar PowerShell como administrador:
+En ejecución
 
-    & "C:\Tools\nssm\nssm.exe" stop NodeGuardAgentSERVER
-    & "C:\Tools\nssm\nssm.exe" remove NodeGuardAgentSERVER confirm
+10. Validar en el dashboard
 
-    Opcionalmente, eliminar archivos:
+Entrar al dashboard de NodeGuard y confirmar en la pagina de "Agentes" que el equipo aparezca como conectado o detectado.
 
-    Remove-Item "C:\NodeGuard" -Recurse -Force
 
-    ## ERRORES COMUNES
+## COMANDOS ÚTILES
 
-    1. El servicio queda en Stopped
+Ver estado del servicio:
 
-    Revisar que exista el archivo:
+Get-Service NodeGuardAgentSERVER
 
-    Test-Path "C:\NodeGuard\NodeGuardAgentSERVER.exe"
+Reiniciar servicio:
 
-    Revisar logs:
+Restart-Service NodeGuardAgentSERVER
 
-    Get-Content "C:\NodeGuard\logs\error.log" -Tail 50
+Detener servicio:
 
-    2. No aparece en el dashboard
+Stop-Service NodeGuardAgentSERVER
 
-    Revisar:
+Iniciar servicio:
 
-    * Que la computadora tenga red.
-    * Que el servidor de NodeGuard esté encendido.
-    * Que la URL/token del agente estén correctos.
-    * Que firewall no bloquee la conexión.
-    * Revisar C:\NodeGuard\logs\error.log.
+Start-Service NodeGuardAgentSERVER
 
-    3. PowerShell no deja ejecutar el script
+Ver errores del agente:
 
-    Ejecutar este comando dentro de la misma ventana de PowerShell como administrador:
+Get-Content "C:\NodeGuard\logs\error.log" -Tail 50
 
-    Set-ExecutionPolicy -Scope Process Bypass -Force
+Ver salida normal del agente:
 
-    Luego volver a ejecutar:
+Get-Content "C:\NodeGuard\logs\out.log" -Tail 50
 
-    .\install-nodeguard.ps1
+## ERRORES COMUNES
 
+1. El script se abre en Bloc de notas
 
-    ## FIN DEL MANUAL
+Solución:
+Abrir PowerShell como administrador, copiar el contenido del script y pegarlo directamente en PowerShell.
+
+2. El servicio no queda en Running
+
+Revisar que el .exe esté dentro de:
+
+C:\NodeGuard
+
+También revisar el log:
+
+C:\NodeGuard\logs\error.log
+
+3. No aparece en Administrador de tareas
+
+Revisar que el servicio esté iniciado:
+
+Get-Service NodeGuardAgentSERVER
+
+Si aparece detenido, ejecutar:
+
+Start-Service NodeGuardAgentSERVER
+
+4. No aparece en el dashboard
+
+Revisar:
+
+* Que la computadora tenga red.
+* Que el servidor de NodeGuard esté encendido.
+* Que el agente tenga la URL correcta del servidor.
+* Que no esté bloqueado por firewall.
+* Revisar los logs en C:\NodeGuard\logs.
+
+
+## FIN DEL MANUAL
