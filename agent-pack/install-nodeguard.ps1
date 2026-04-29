@@ -1,71 +1,106 @@
 $SERVICE = "NodeGuardAgentSERVER"
 $AGENT_DIR = "C:\NodeGuard"
-$AGENT_EXE = "C:\NodeGuard\NodeGuardAgentSERVER.exe"
 $TOOLS_DIR = "C:\Tools\nssm"
-$NSSM = "C:\Tools\nssm\nssm.exe"
+$NSSM_FINAL = "C:\Tools\nssm\nssm.exe"
+$FINAL_AGENT = "C:\NodeGuard\NodeGuardAgentSERVER.exe"
+$CURRENT_DIR = (Get-Location).Path
 
-Write-Host "=== Instalador NodeGuardAgentSERVER ===" -ForegroundColor Cyan
+Write-Host "=== REPARANDO NODEGUARD ===" -ForegroundColor Cyan
 
-# Crear carpetas necesarias
+# Validar administrador
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (!$isAdmin) {
+    Write-Host "ERROR: Debes ejecutar PowerShell como administrador." -ForegroundColor Red
+    Read-Host "Presiona ENTER para salir"
+    exit
+}
+
+# Crear carpetas
 New-Item -ItemType Directory -Path $AGENT_DIR -Force | Out-Null
 New-Item -ItemType Directory -Path "$AGENT_DIR\logs" -Force | Out-Null
 New-Item -ItemType Directory -Path $TOOLS_DIR -Force | Out-Null
 
-# Validar que exista el agente
-if (!(Test-Path $AGENT_EXE)) {
-    Write-Host "ERROR: No existe el agente en: $AGENT_EXE" -ForegroundColor Red
-    Write-Host "Copia NodeGuardAgentSERVER.exe dentro de C:\NodeGuard y vuelve a ejecutar el script." -ForegroundColor Yellow
+# Buscar agente dentro del paquete
+$LOCAL_AGENT = Get-ChildItem -Path $CURRENT_DIR -Filter "NodeGuard*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+
+if (!$LOCAL_AGENT) {
+    Write-Host "ERROR: No se encontro NodeGuard*.exe en la carpeta actual." -ForegroundColor Red
+    Write-Host "Asegurate de estar parado dentro de la carpeta descomprimida del ZIP." -ForegroundColor Yellow
+    Read-Host "Presiona ENTER para salir"
     exit
 }
 
-# Descargar NSSM si no existe
-if (!(Test-Path $NSSM)) {
-    Write-Host "Descargando NSSM..." -ForegroundColor Cyan
+# Copiar agente
+Copy-Item $LOCAL_AGENT.FullName $FINAL_AGENT -Force
+Unblock-File $FINAL_AGENT
 
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile "$TOOLS_DIR\nssm.zip"
-    Expand-Archive -Path "$TOOLS_DIR\nssm.zip" -DestinationPath $TOOLS_DIR -Force
-    Copy-Item "$TOOLS_DIR\nssm-2.24\win64\nssm.exe" $NSSM -Force
-    Unblock-File $NSSM
+# Buscar NSSM dentro del paquete o en C:\Tools
+$LOCAL_NSSM = Get-ChildItem -Path $CURRENT_DIR -Recurse -Filter "nssm.exe" -File -ErrorAction SilentlyContinue |
+Where-Object { $_.FullName -like "*win64*" -or $_.FullName -like "*tools*" } |
+Select-Object -First 1
+
+if (!$LOCAL_NSSM -and (Test-Path $NSSM_FINAL)) {
+    $LOCAL_NSSM = Get-Item $NSSM_FINAL
 }
 
-# Validar NSSM
-if (!(Test-Path $NSSM)) {
-    Write-Host "ERROR: No se encontró NSSM en: $NSSM" -ForegroundColor Red
+if (!$LOCAL_NSSM) {
+    Write-Host "ERROR: No se encontro nssm.exe dentro del paquete." -ForegroundColor Red
+    Write-Host "Debe venir dentro de la carpeta tools o tools\nssm-2.24\win64." -ForegroundColor Yellow
+    Read-Host "Presiona ENTER para salir"
     exit
 }
 
-# Revisar si ya existe el servicio
+Copy-Item $LOCAL_NSSM.FullName $NSSM_FINAL -Force
+Unblock-File $NSSM_FINAL
+
+# Dar permisos correctos
+icacls "C:\NodeGuard" /grant "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /T | Out-Null
+icacls "C:\Tools" /grant "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-544:(OI)(CI)F" /T | Out-Null
+
+# Eliminar servicio anterior si existe
 $existing = Get-Service $SERVICE -ErrorAction SilentlyContinue
 
 if ($existing) {
-    Write-Host "El servicio ya existe. Se detendrá para reconfigurarlo..." -ForegroundColor Yellow
-    & $NSSM stop $SERVICE | Out-Null
-} else {
-    Write-Host "Creando servicio $SERVICE..." -ForegroundColor Cyan
-    & $NSSM install $SERVICE $AGENT_EXE
+    Write-Host "Eliminando servicio anterior..." -ForegroundColor Yellow
+    try { Stop-Service $SERVICE -Force -ErrorAction SilentlyContinue } catch {}
+    try { & $NSSM_FINAL stop $SERVICE | Out-Null } catch {}
+    try { & $NSSM_FINAL remove $SERVICE confirm | Out-Null } catch {}
+    Start-Sleep -Seconds 2
 }
 
-# Configurar servicio
-& $NSSM set $SERVICE Application $AGENT_EXE
-& $NSSM set $SERVICE AppDirectory $AGENT_DIR
-& $NSSM reset $SERVICE AppParameters
-& $NSSM set $SERVICE AppStdout "$AGENT_DIR\logs\out.log"
-& $NSSM set $SERVICE AppStderr "$AGENT_DIR\logs\error.log"
-& $NSSM set $SERVICE Start SERVICE_AUTO_START
-& $NSSM set $SERVICE AppExit Default Restart
+# Crear servicio limpio
+Write-Host "Creando servicio limpio..." -ForegroundColor Cyan
 
-# Iniciar servicio
+& $NSSM_FINAL install $SERVICE $FINAL_AGENT
+& $NSSM_FINAL set $SERVICE Application $FINAL_AGENT
+& $NSSM_FINAL set $SERVICE AppDirectory $AGENT_DIR
+& $NSSM_FINAL reset $SERVICE AppParameters
+& $NSSM_FINAL set $SERVICE AppStdout "$AGENT_DIR\logs\out.log"
+& $NSSM_FINAL set $SERVICE AppStderr "$AGENT_DIR\logs\error.log"
+& $NSSM_FINAL set $SERVICE Start SERVICE_AUTO_START
+& $NSSM_FINAL set $SERVICE AppExit Default Restart
+
 Write-Host "Iniciando servicio..." -ForegroundColor Cyan
-& $NSSM start $SERVICE
+& $NSSM_FINAL start $SERVICE
 
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 4
 
-# Mostrar estado final
-Write-Host "=== Estado del servicio ===" -ForegroundColor Green
+Write-Host ""
+Write-Host "=== ESTADO FINAL ===" -ForegroundColor Green
 Get-Service $SERVICE
 
-Write-Host "=== Proceso asociado ===" -ForegroundColor Green
-Get-CimInstance Win32_Service -Filter "Name='$SERVICE'" | Select-Object Name, State, ProcessId
+Write-Host ""
+Write-Host "=== PROCESO ===" -ForegroundColor Green
+Get-Process | Where-Object { $_.ProcessName -like "NodeGuard*" } | Select-Object ProcessName, Id
 
-Write-Host "=== Instalación finalizada ===" -ForegroundColor Green
+Write-Host ""
+Write-Host "=== SERVICIO ===" -ForegroundColor Green
+Get-CimInstance Win32_Service -Filter "Name='$SERVICE'" | Select-Object Name, State, StartName, PathName, ProcessId
+
+Write-Host ""
+Write-Host "Si sigue en Stopped, revisa este log:" -ForegroundColor Yellow
+Write-Host "C:\NodeGuard\logs\error.log" -ForegroundColor Yellow
+
+Read-Host "Presiona ENTER para cerrar"
