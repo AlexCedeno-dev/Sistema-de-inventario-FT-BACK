@@ -18,6 +18,7 @@ router.post(
   inventarioController.postResponsivaFirmaDigital
 );
 
+
 router.post(
   '/equipos/:equipoId/bitlocker',
   uploadResponsiva.single('archivo'),
@@ -42,6 +43,11 @@ router.get(
 router.post(
  '/firma/:token/guardar',
  inventarioController.postGuardarFirmaToken
+);
+
+router.get(
+ '/entregas-historial',
+ inventarioController.getHistorialEntregas
 );
 
 module.exports = router;

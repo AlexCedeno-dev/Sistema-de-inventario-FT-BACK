@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const inventarioService = require('../services/inventario.service');
 const inventarioModel = require('../models/inventario.model');
+const GERENTE_NOMBRE = 'Anibal Cervantes Duran';
+const GERENTE_FIRMA_PATH = path.join(__dirname, '../assets/firmas/firma-anibal.png');
 
 
 async function getInventarioNuevo(req, res) {
@@ -22,8 +24,7 @@ async function getInventarioViejo(req, res) {
     res.status(500).json({ error: error.message });
   }
 }
-
-async function crearResponsivaPDF({ data,entregadoPor,firmaITBase64,firmaReceptorBase64,output}) {
+async function crearResponsivaPDF({ data, entregadoPor, firmaITBase64, firmaReceptorBase64, output }) {
   const doc = new PDFDocument({
     size: 'LETTER',
     margin: 35
@@ -46,132 +47,142 @@ async function crearResponsivaPDF({ data,entregadoPor,firmaITBase64,firmaRecepto
     : '________________';
 
   const specsTexto = data.specs
-    ? `${data.specs}, cargador y mochila`
-    : `${data.marca || ''} ${data.modelo || ''}, cargador y mochila`.trim();
+    ? `${data.specs}, Cargador y mochila`
+    : `${data.marca || ''} ${data.modelo || ''}, Cargador y mochila`.trim();
+
+  const equipoTexto = `${data.marca || ''} ${data.modelo || ''}`.trim() || 'N/A';
+
+  // Logo y fecha
+  doc.image(logoPath, 55, 100, { width: 165 });
 
   doc.font('Helvetica-Bold')
-    .fontSize(13)
-    .text('RESPONSIVA DE EQUIPO COMPUTO', 0, 18, { align: 'center' });
-
-  doc.image(logoPath, 55, 70, { width: 170 });
-
-  doc.font('Helvetica')
-    .fontSize(10.5)
-    .text(`Aguascalientes, Ags., ${fechaGeneracion}`, 355, 95, {
+    .fontSize(10)
+    .text(`Aguascalientes, Ags., ${fechaGeneracion}`, 335, 125, {
       underline: true,
-      width: 190,
-      align: 'left'
+      width: 215,
+      align: 'center'
     });
 
+  // Título carta
   doc.font('Helvetica-Bold')
     .fontSize(14)
-    .text('Carta responsiva equipo de computo', 0, 160, { align: 'center' });
+    .text('Carta responsiva equipo de computo', 0, 185, { align: 'center' });
+
+  // Bloque principal estilo formulario
+  doc.fontSize(10);
 
   doc.font('Helvetica')
-    .fontSize(10.5)
     .text(
       'Mediante este documento, el área de sistemas de la empresa Foresight Mexico CO LTD S de RL de CV, hace entrega del equipo marca y modelo',
       55,
-      205,
-      { width: 370 }
+      225,
+      { width: 390, align: 'left' }
     );
 
   doc.font('Helvetica-Bold')
-    .text(`${data.marca || ''} ${data.modelo || ''}`.trim() || 'N/A', 415, 222, {
+    .text(equipoTexto, 425, 240, {
       underline: true,
-      width: 120,
+      width: 125,
       align: 'center'
     });
 
-  doc.font('Helvetica').text('con el numero de serie', 55, 252);
+  doc.font('Helvetica')
+    .text('con el numero de serie', 55, 270);
 
   doc.font('Helvetica-Bold')
-    .text(`${data.service_tag || 'N/A'}`, 165, 252, {
-      underline: true,
-      width: 95,
-      align: 'center'
-    });
-
-  doc.font('Helvetica').text('el cual se entrega a', 360, 252);
-
-  doc.font('Helvetica-Bold')
-    .text(`${data.nombre_completo || 'N/A'}`, 55, 280, {
-      underline: true,
-      width: 250,
-      align: 'center'
-    });
-
-  doc.font('Helvetica').text(', del area de:', 315, 280);
-
-  doc.font('Helvetica-Bold')
-    .text(`${data.departamento || 'N/A'}`, 420, 280, {
+    .text(data.service_tag || 'N/A', 180, 270, {
       underline: true,
       width: 110,
       align: 'center'
     });
 
-  doc.font('Helvetica').text('quien tendra uso y responsabilidad sobre el desde:', 55, 308);
+  doc.font('Helvetica')
+    .text('el cual se entrega a', 360, 270);
 
   doc.font('Helvetica-Bold')
-    .text(`${fechaAsignacion}`, 365, 308, {
+    .text(data.nombre_completo || 'N/A', 55, 295, {
       underline: true,
-      width: 130,
+      width: 285,
       align: 'center'
     });
 
+  doc.font('Helvetica')
+    .text(', del area de:', 345, 295);
+
+  doc.font('Helvetica-Bold')
+    .text(data.departamento || 'N/A', 430, 295, {
+      underline: true,
+      width: 120,
+      align: 'center'
+    });
+
+  doc.font('Helvetica')
+    .text('quien tendra uso y responsabilidad sobre el desde:', 55, 320);
+
+  doc.font('Helvetica-Bold')
+    .text(fechaAsignacion, 375, 320, {
+      underline: true,
+      width: 135,
+      align: 'center'
+    });
+
+  // Responsabilidad
   doc.font('Helvetica')
     .fontSize(10)
     .text(
       'El receptor, asume total responsabilidad y el cuidado de dicho equipo completo y parcial del mismo. Se compromete a utilizarlo con un uso estrictamente laboral. No se podrá instalar programas ajenos al uso de la empresa, hacer modificaciones de cualquier tipo al equipo, contando con las siguientes especificaciones.',
       55,
-      350,
-      { width: 500, align: 'justify' }
+      360,
+      { width: 500, align: 'justify', lineGap: 1 }
     );
 
+  // Especificaciones
   doc.font('Helvetica-Bold')
     .fontSize(10)
-    .text(`Especificaciones: ${specsTexto}`, 55, 420, {
+    .text(`Especificaciones: ${specsTexto}`, 55, 435, {
       width: 500,
       align: 'center'
     });
 
-  doc.image(estadoEquipoPath, 75, 445, {
-    fit: [460, 110],
+  // Imagen estado equipo
+  doc.image(estadoEquipoPath, 95, 460, {
+    fit: [420, 120],
     align: 'center',
     valign: 'center'
   });
 
-  doc.font('Helvetica')
+  // Condiciones
+  doc.font('Helvetica-Bold')
     .fontSize(8.7)
     .text(
       'NO se permite extraer algún componente de equipo para uso personal o sustraerlo de la planta sin previa autorización de su gerente. Cualquier problema o fallo, deberá ser informado al departamento de IT.',
       55,
-      565,
-      { width: 500, align: 'center' }
+      590,
+      { width: 500, align: 'center', lineGap: 1 }
     );
 
-  doc.text(
-    'En caso de extravío, robo por negligencia (Ejemplo dejar equipo en auto) o robo sin violencia el usuario deberá de cubrir el 100% del valor total del equipo VALOR FACTURA.',
-    55,
-    600,
-    { width: 500, align: 'center' }
-  );
+  doc.font('Helvetica')
+    .fontSize(8.7)
+    .text(
+      'En caso de extravío, robo por negligencia (Ejemplo dejar equipo en auto) o robo sin violencia el usuario deberá de cubrir el 100% del valor total del equipo VALOR FACTURA.',
+      55,
+      625,
+      { width: 500, align: 'center', lineGap: 1 }
+    );
 
   doc.text(
     'En caso de robo con violencia, el usuario deberá presentar la denuncia pertinente ante el MP, se tendrá que mostrar la original y entregar una copia al departamento de IT; en este caso, el usuario solo cubrirá el deducible del valor total del equipo según la póliza vigente del seguro.',
     55,
-    635,
-    { width: 500, align: 'center' }
+    660,
+    { width: 500, align: 'center', lineGap: 1 }
   );
 
-  const yFirmas = 715;
+  // Firmas
+  const yFirmas = 735;
 
-  if (firmaITBase64) {
-    const base64DataIT = firmaITBase64.replace(/^data:image\/png;base64,/, '');
-    const firmaITBuffer = Buffer.from(base64DataIT, 'base64');
-
-    doc.image(firmaITBuffer, 105, yFirmas - 55, {
-      fit: [120, 45],
+  if (fs.existsSync(GERENTE_FIRMA_PATH)) {
+    doc.image(GERENTE_FIRMA_PATH, 125, yFirmas - 48, {
+      fit: [100, 38],
       align: 'center'
     });
   }
@@ -180,39 +191,38 @@ async function crearResponsivaPDF({ data,entregadoPor,firmaITBase64,firmaRecepto
     const base64DataReceptor = firmaReceptorBase64.replace(/^data:image\/png;base64,/, '');
     const firmaReceptorBuffer = Buffer.from(base64DataReceptor, 'base64');
 
-    doc.image(firmaReceptorBuffer, 375, yFirmas - 55, {
-      fit: [120, 45],
+    doc.image(firmaReceptorBuffer, 385, yFirmas - 48, {
+      fit: [100, 38],
       align: 'center'
     });
   }
 
-  doc.moveTo(90, yFirmas).lineTo(240, yFirmas).stroke();
-  doc.moveTo(350, yFirmas).lineTo(520, yFirmas).stroke();
+  doc.moveTo(85, yFirmas).lineTo(255, yFirmas).stroke();
+  doc.moveTo(350, yFirmas).lineTo(525, yFirmas).stroke();
 
   doc.font('Helvetica-Bold')
-    .fontSize(10)
-    .text(entregadoPor || 'Departamento IT', 90, yFirmas + 8, {
-      width: 150,
+    .fontSize(9.5)
+    .text(GERENTE_NOMBRE, 85, yFirmas + 8, {
+      width: 170,
       align: 'center'
     });
 
-  doc.text(`${data.nombre_completo || 'Receptor'}`, 350, yFirmas + 8, {
-    width: 170,
+  doc.text(data.nombre_completo || 'Receptor', 350, yFirmas + 8, {
+    width: 175,
     align: 'center'
   });
 
-  doc.text('Departamento de IT', 90, yFirmas + 22, {
-    width: 150,
+  doc.text('Departamento de IT', 85, yFirmas + 22, {
+    width: 170,
     align: 'center'
   });
 
   doc.text('Receptor', 350, yFirmas + 22, {
-    width: 170,
+    width: 175,
     align: 'center'
   });
 
   doc.end();
-
   return doc;
 }
 
@@ -362,7 +372,7 @@ async function getBitlocker(req, res) {
 async function postGenerarLinkFirma(req, res) {
   try {
     const equipoId = Number(req.params.equipoId);
-    const { entregadoPor } = req.body;
+    const { entregadoPor, tipoEntregador } = req.body;
 
     const baseUrl =
       process.env.FRONTEND_URL ||
@@ -372,6 +382,7 @@ async function postGenerarLinkFirma(req, res) {
     const result = await inventarioService.generarLinkFirma({
       equipoId,
       entregadoPor,
+      tipoEntregador,
       baseUrl
     });
 
@@ -502,6 +513,33 @@ async function postGuardarFirmaToken(req,res){
  });
 
  }
+ 
+}
+
+
+async function getHistorialEntregas(req,res){
+
+    try{
+
+    const filtro =
+    req.query.filtro || 'hoy';
+
+    const result=
+    await inventarioService
+    .obtenerHistorialEntregas(
+      filtro
+    );
+
+    res.json(result);
+
+    }catch(error){
+
+    res.status(500).json({
+      error:error.message
+    });
+
+    }
+
 }
 
 module.exports = {
@@ -515,6 +553,7 @@ module.exports = {
   getBitlocker,
   postGenerarLinkFirma,
   getDatosFirmaToken,
-  postGuardarFirmaToken
+  postGuardarFirmaToken,
+  getHistorialEntregas
 
 };

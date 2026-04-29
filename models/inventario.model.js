@@ -184,7 +184,7 @@ async function obtenerDocumentoBitlockerPorEquipoId(equipoId) {
   }
 }
 
-async function insertarFirmaPendiente({ equipoId, token, entregadoPor }) {
+async function insertarFirmaPendiente({ equipoId, token, entregadoPor, tipoEntregador }) {
   const db = await crearConexion();
 
   try {
@@ -193,10 +193,11 @@ async function insertarFirmaPendiente({ equipoId, token, entregadoPor }) {
         equipo_id,
         token,
         entregado_por,
+        tipo_entregador,
         estado
       )
-      VALUES (?, ?, ?, 'PENDIENTE')
-    `, [equipoId, token, entregadoPor]);
+      VALUES (?, ?, ?, ?, 'PENDIENTE')
+    `, [equipoId, token, entregadoPor, tipoEntregador]);
 
     return result;
   } finally {
@@ -247,15 +248,61 @@ async function marcarFirmaComoCompletada(token) {
   try {
     const [result] = await db.execute(`
       UPDATE firmas_pendientes
-      SET estado = 'FIRMADO',
-          fecha_firma = CURRENT_TIMESTAMP
-      WHERE token = ?
+      SET estado='ENTREGADO',
+          fecha_firma=CURRENT_TIMESTAMP
+      WHERE token=?
     `, [token]);
 
     return result;
   } finally {
     await db.end();
   }
+}
+
+
+async function obtenerHistorialEntregas(filtro) {
+  const db = await crearConexion();
+
+  let where = 'DATE(fp.fecha_firma)=CURDATE()';
+
+  if (filtro === 'semana') {
+    where = 'YEARWEEK(fp.fecha_firma,1)=YEARWEEK(CURDATE(),1)';
+  }
+
+  if (filtro === 'mes') {
+    where = `
+      MONTH(fp.fecha_firma)=MONTH(CURDATE())
+      AND YEAR(fp.fecha_firma)=YEAR(CURDATE())
+    `;
+  }
+
+  const [rows] = await db.execute(`
+    SELECT
+      fp.fecha_firma,
+      fp.entregado_por,
+      fp.tipo_entregador,
+      fp.estado,
+      e.equipo_id,
+      e.service_tag,
+      md.marca,
+      md.modelo,
+      emp.departamento,
+      emp.planta,
+      emp.nombre_completo
+    FROM firmas_pendientes fp
+    JOIN equipos e
+      ON e.equipo_id = fp.equipo_id
+    LEFT JOIN empleados emp
+      ON emp.empleado_id = e.empleado_id
+    LEFT JOIN marca_dispositivos md
+      ON md.marca_id = e.marca_id
+    WHERE ${where}
+      AND fp.estado IN ('FIRMADO', 'ENTREGADO')
+      AND fp.fecha_firma IS NOT NULL
+    ORDER BY fp.fecha_firma DESC
+  `);
+
+  return rows;
 }
 
 module.exports = {
@@ -267,6 +314,8 @@ module.exports = {
   obtenerDocumentoBitlockerPorEquipoId,
   insertarFirmaPendiente,
   obtenerFirmaPendientePorToken,
-  marcarFirmaComoCompletada
+  marcarFirmaComoCompletada,
+
+  obtenerHistorialEntregas
 
 };

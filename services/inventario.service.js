@@ -8,6 +8,7 @@ async function listarInventarioNuevo() {
   return await inventarioModel.obtenerInventarioNuevo();
 }
 
+
 async function listarInventarioViejo() {
   const rows = await inventarioModel.obtenerInventarioViejo();
 
@@ -298,7 +299,7 @@ async function guardarDocumentoResponsivaDigital({ equipoId, nombreArchivo, ruta
   };
 }
 
-async function generarLinkFirma({ equipoId, entregadoPor, baseUrl }) {
+async function generarLinkFirma({ equipoId, entregadoPor, tipoEntregador, baseUrl }) {
   const id = Number(equipoId);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -323,11 +324,12 @@ async function generarLinkFirma({ equipoId, entregadoPor, baseUrl }) {
 
   const token = crypto.randomBytes(32).toString('hex');
 
-  await inventarioModel.insertarFirmaPendiente({
-    equipoId: id,
-    token,
-    entregadoPor: entregadoPor.trim()
-  });
+    await inventarioModel.insertarFirmaPendiente({
+      equipoId: id,
+      token,
+      entregadoPor: entregadoPor.trim(),
+      tipoEntregador: tipoEntregador || 'IT'
+    });
 
   return {
     status: 'ok',
@@ -353,7 +355,12 @@ async function obtenerDatosFirmaPorToken(token) {
 
   return rows[0];
 }
-  
+
+async function obtenerHistorialEntregas(filtro){
+ return await inventarioModel
+ .obtenerHistorialEntregas(filtro);
+}
+
 module.exports = {
   listarInventarioNuevo,
   listarInventarioViejo,
@@ -366,5 +373,7 @@ module.exports = {
   guardarBitlocker,
   obtenerDocumentoBitlocker,
   generarLinkFirma,
-  obtenerDatosFirmaPorToken
+  obtenerDatosFirmaPorToken,
+
+  obtenerHistorialEntregas
 };
