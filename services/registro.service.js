@@ -28,10 +28,17 @@ async function registrarEquipo(body) {
     const existe = await registroModel.buscarEquipoPorServiceTag(equipo.service_tag);
 
     if (existe.length > 0) {
-        const error = new Error('El equipo ya está registrado');
-        error.statusCode = 400;
-        error.extra = { equipo_id: existe[0].equipo_id };
-        throw error;
+        const equipoExistente = existe[0];
+
+        const estaAsignado = equipoExistente.empleado_id !== null;
+        const estaActivo = equipoExistente.estado_registro !== 'LIBERADO';
+
+        if (estaAsignado && estaActivo) {
+            const error = new Error('El equipo ya está registrado y asignado a un empleado');
+            error.statusCode = 400;
+            error.extra = { equipo_id: equipoExistente.equipo_id };
+            throw error;
+        }
     }
 
     let empleadoId = null;
@@ -77,7 +84,8 @@ async function registrarEquipo(body) {
         fecha_compra: fechaCompraFinal,
         fecha_asig: fechaAsignacionFinal,
         start_warranty: equipo.start_warranty,
-        end_warranty: equipo.end_warranty
+        end_warranty: equipo.end_warranty,
+        permiso_salida: equipo.permiso_salida ?? 0
     });
 
     const equipoId = equipoResult.insertId;
@@ -140,11 +148,15 @@ async function liberarEquipo(equipoId) {
         throw error;
     }
 
-        await registroModel.liberarMonitoreoPorEquipoId(equipoId);
-        await registroModel.eliminarDatosWindowsPorEquipoId(equipoId);
-        await registroModel.eliminarDocumentosPorEquipoId(equipoId);
-        await registroModel.eliminarFirmasPendientesPorEquipoId(equipoId);
-        await registroModel.eliminarEquipoPorId(equipoId);
+    await registroModel.liberarMonitoreoPorEquipoId(equipoId);
+    await registroModel.eliminarDatosWindowsPorEquipoId(equipoId);
+
+    // Ya NO borrar documentos, firmas ni equipo físico
+    // await registroModel.eliminarDocumentosPorEquipoId(equipoId);
+    // await registroModel.eliminarFirmasPendientesPorEquipoId(equipoId);
+    // await registroModel.eliminarEquipoPorId(equipoId);
+
+    await registroModel.liberarEquipoFisico(equipoId);
 
     return {
         status: 'ok',

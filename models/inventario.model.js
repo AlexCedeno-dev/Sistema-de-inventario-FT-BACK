@@ -4,7 +4,7 @@ async function obtenerInventarioNuevo() {
   const db = await crearConexion();
 
   try {
-    const [rows] = await db.execute(`
+const [rows] = await db.execute(`
       SELECT
         e.equipo_id,
         e.empleado_id,
@@ -46,6 +46,10 @@ async function obtenerInventarioNuevo() {
           WHERE d.equipo_id = e.equipo_id
             AND d.tipo_documento = 'BITLOCKER'
         )
+
+      WHERE e.estado_registro <> 'LIBERADO'
+        AND e.empleado_id IS NOT NULL
+
       ORDER BY e.equipo_id DESC
     `);
 

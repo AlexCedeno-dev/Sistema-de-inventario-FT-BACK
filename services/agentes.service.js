@@ -125,6 +125,7 @@ async function listarAgentesAgrupados() {
 
   rows.forEach((agente) => {
     const lastSeenDate = agente.last_seen ? new Date(agente.last_seen) : null;
+    const equipoLiberado = agente.estado_equipo === 'LIBERADO';
 
     const segundosSinReportar = lastSeenDate
       ? (ahora.getTime() - lastSeenDate.getTime()) / 1000
@@ -163,7 +164,14 @@ async function listarAgentesAgrupados() {
       equipo_id_registrado: agente.equipo_id_registrado || null
     };
 
-    // 1. SI YA ESTÁ REGISTRADO, SIEMPRE VA A REGISTRADOS
+    if (equipoLiberado) {
+      item.estado_registro = 'PENDIENTE';
+      item.registrado_en_inventario = 0;
+      item.equipo_id_registrado = null;
+      pendientes.push(item);
+      return;
+    }
+
     if (agente.registrado_en_inventario === 1) {
       item.estado_registro = 'REGISTRADO';
       registrados.push(item);

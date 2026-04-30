@@ -1,13 +1,17 @@
 const { crearConexion } = require('../configs/db');
+const crypto = require('crypto');
 
 async function buscarEquipoPorServiceTag(serviceTag) {
   const db = await crearConexion();
 
   try {
     const [rows] = await db.execute(
-      `SELECT equipo_id
-       FROM equipos
-       WHERE TRIM(UPPER(service_tag)) = TRIM(UPPER(?))`,
+      `
+      SELECT equipo_id, empleado_id, service_tag, qr_token, estado_registro
+      FROM equipos
+      WHERE TRIM(UPPER(service_tag)) = TRIM(UPPER(?))
+      LIMIT 1
+      `,
       [serviceTag]
     );
 
@@ -102,6 +106,69 @@ async function insertarEquipo(data) {
   const db = await crearConexion();
 
   try {
+    const serviceTag = data.service_tag?.trim();
+
+    const [existente] = await db.execute(
+      `
+      SELECT equipo_id, qr_token
+      FROM equipos
+      WHERE TRIM(UPPER(service_tag)) = TRIM(UPPER(?))
+      LIMIT 1
+      `,
+      [serviceTag]
+    );
+
+    if (existente.length > 0) {
+      const equipoIdExistente = existente[0].equipo_id;
+      const qrTokenFinal = existente[0].qr_token || crypto.randomUUID();
+
+      await db.execute(
+        `
+        UPDATE equipos
+        SET empleado_id = ?,
+            marca_id = ?,
+            tipo = ?,
+            service_tag = ?,
+            nombre_equipo = ?,
+            bios_password = ?,
+            specs = ?,
+            fecha_compra = ?,
+            fecha_asig = ?,
+            start_warranty = ?,
+            end_warranty = ?,
+            qr_token = ?,
+            permiso_salida = ?,
+            estado_registro = 'ACTIVO'
+        WHERE equipo_id = ?
+        `,
+        [
+          data.empleadoId,
+          data.marcaId,
+          data.tipo,
+          serviceTag,
+          data.nombre_equipo,
+          data.bios_password,
+          data.specs,
+          data.fecha_compra,
+          data.fecha_asig,
+          data.start_warranty,
+          data.end_warranty,
+          qrTokenFinal,
+          data.permiso_salida ?? 0,
+          equipoIdExistente
+        ]
+      );
+
+      return {
+        insertId: equipoIdExistente,
+        affectedRows: 1,
+        reutilizado: true,
+        qr_token: qrTokenFinal
+      };
+    }
+
+    const qrTokenNuevo = crypto.randomUUID();
+
     const [result] = await db.execute(
       `
       INSERT INTO equipos (
@@ -115,26 +182,35 @@ async function insertarEquipo(data) {
         fecha_compra,
         fecha_asig,
         start_warranty,
-        end_warranty
+        end_warranty,
+        qr_token,
+        permiso_salida,
+        estado_registro
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO')
       `,
       [
         data.empleadoId,
         data.marcaId,
         data.tipo,
-        data.service_tag,
+        serviceTag,
         data.nombre_equipo,
         data.bios_password,
         data.specs,
         data.fecha_compra,
         data.fecha_asig,
         data.start_warranty,
-        data.end_warranty
+        data.end_warranty,
+        qrTokenNuevo,
+        data.permiso_salida ?? 0
       ]
     );
 
-    return result;
+    return {
+      ...result,
+      reutilizado: false,
+      qr_token: qrTokenNuevo
+    };
   } finally {
     await db.end();
   }
@@ -258,7 +334,10 @@ async function eliminarEquipoPorId(equipoId) {
   try {
     const [result] = await db.execute(
       `
-      DELETE FROM equipos
+      UPDATE equipos
+      SET empleado_id = NULL,
+          fecha_asig = NULL,
+          estado_registro = 'LIBERADO'
       WHERE equipo_id = ?
       `,
       [equipoId]
@@ -458,17 +537,19 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
     ]);
 
     await db.execute(`
-      UPDATE equipos
-      SET tipo = ?,
-          service_tag = ?,
-          nombre_equipo = ?,
-          bios_password = ?,
-          specs = ?,
-          fecha_compra = ?,
-          fecha_asig = ?,
-          start_warranty = ?,
-          end_warranty = ?
-      WHERE equipo_id = ?
+        UPDATE equipos
+        SET tipo = ?,
+            service_tag = ?,
+            nombre_equipo = ?,
+            bios_password = ?,
+            specs = ?,
+            fecha_compra = ?,
+            fecha_asig = ?,
+            start_warranty = ?,
+            end_warranty = ?,
+            permiso_salida = ?,
+            qr_token = IFNULL(qr_token, UUID())
+        WHERE equipo_id = ?
     `,[
       body.equipo.tipo,
       body.equipo.service_tag,
@@ -479,6 +560,7 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
       body.equipo.fecha_asig,
       body.equipo.start_warranty,
       body.equipo.end_warranty,
+      body.equipo.permiso_salida ?? 0,
       equipoId
     ]);
 
@@ -731,6 +813,27 @@ async function obtenerDetalleEquipo(equipoId) {
     }
 }
 
+async function liberarEquipoFisico(equipoId) {
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(
+      `
+      UPDATE equipos
+      SET empleado_id = NULL,
+          fecha_asig = NULL,
+          estado_registro = 'LIBERADO'
+      WHERE equipo_id = ?
+      `,
+      [equipoId]
+    );
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
 module.exports = {
   buscarEquipoPorServiceTag,
   buscarEmpleadoPorNombre,
@@ -755,4 +858,5 @@ module.exports = {
   actualizarEquipoCompleto,
 
   obtenerDetalleEquipo,
+  liberarEquipoFisico
 };
