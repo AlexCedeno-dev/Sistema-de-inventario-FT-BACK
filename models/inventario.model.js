@@ -9,6 +9,8 @@ async function obtenerInventarioNuevo() {
         e.equipo_id,
         e.empleado_id,
         e.marca_id,
+        e.qr_token,
+        e.permiso_salida,
         e.tipo,
         e.service_tag,
         e.nombre_equipo,
@@ -305,6 +307,42 @@ async function obtenerHistorialEntregas(filtro) {
   return rows;
 }
 
+async function obtenerEquipoPorQrToken(token) {
+  const db = await crearConexion();
+
+  try {
+    const [rows] = await db.execute(`
+      SELECT
+        e.equipo_id,
+        e.qr_token,
+        e.service_tag,
+        e.tipo,
+        e.nombre_equipo,
+        e.fecha_asig,
+        e.estado_registro,
+        emp.nombre_completo AS empleado_asignado,
+        emp.departamento,
+        md.marca,
+        md.modelo,
+        CASE
+          WHEN e.permiso_salida = 1 THEN 'AUTORIZADO'
+          ELSE 'NO_AUTORIZADO'
+        END AS permiso_salida
+      FROM equipos e
+      LEFT JOIN empleados emp
+        ON emp.empleado_id = e.empleado_id
+      LEFT JOIN marca_dispositivos md
+        ON md.marca_id = e.marca_id
+      WHERE e.qr_token = ?
+      LIMIT 1
+    `, [token]);
+
+    return rows;
+  } finally {
+    await db.end();
+  }
+}
+
 module.exports = {
   obtenerInventarioNuevo,
   obtenerInventarioViejo,
@@ -316,6 +354,7 @@ module.exports = {
   obtenerFirmaPendientePorToken,
   marcarFirmaComoCompletada,
 
-  obtenerHistorialEntregas
+  obtenerHistorialEntregas,
 
+  obtenerEquipoPorQrToken,
 };
