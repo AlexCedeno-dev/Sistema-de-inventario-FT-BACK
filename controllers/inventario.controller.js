@@ -3,8 +3,10 @@ const path = require('path');
 const fs = require('fs');
 const inventarioService = require('../services/inventario.service');
 const inventarioModel = require('../models/inventario.model');
+const { permission } = require('process');
 const GERENTE_NOMBRE = 'Anibal Cervantes Duran';
 const GERENTE_FIRMA_PATH = path.join(__dirname, '../assets/firmas/firma-anibal.png');
+const QRCode = require('qrcode');
 
 
 async function getInventarioNuevo(req, res) {
@@ -483,6 +485,162 @@ async function getHistorialEntregas(req,res){
 
 }
 
+async function getEquipoPorQrToken(req, res) {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        error: 'Token QR requerido'
+      });
+    }
+
+    const rows = await inventarioModel.obtenerEquipoPorQrToken(token);
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({
+        error: 'Equipo no encontrado'
+      });
+    }
+
+    const equipo = rows[0];
+
+    res.json({
+      status: 'ok',
+      equipo: {
+        equipo_id: equipo.equipo_id,
+        codigo_activo: `FSMX-${equipo.service_tag}-${equipo.equipo_id}`,
+        service_tag: equipo.service_tag,
+        empleado_asignado: equipo.empleado_asignado,
+        departamento: equipo.departamento,
+        tipo: equipo.tipo,
+        marca: equipo.marca,
+        modelo: equipo.modelo,
+        permiso_salida: equipo.permiso_salida,
+        estado_registro: equipo.estado_registro,
+        fecha_asig: equipo.fecha_asig
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message
+    });
+  }
+}
+
+async function patchPermisoSalida(req, res) {
+  try {
+    const equipoId = Number(req.params.equipoId);
+    const permisoSalida = req.body.permiso_salida ? 1 : 0;
+
+    await inventarioModel.actualizarPermisoSalida(equipoId, permisoSalida);
+
+    res.json({
+      status: 'ok',
+      equipo_id: equipoId,
+      permiso_salida: permisoSalida
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+async function getEtiquetaQrPDF(req, res) {
+  try {
+    const equipoId = Number(req.params.equipoId);
+
+    if (!equipoId) {
+      return res.status(400).json({ error: 'ID de equipo inválido' });
+    }
+
+    const rows = await inventarioModel.obtenerEquipoEtiquetaQR(equipoId);
+
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    const data = rows[0];
+
+    if (!data.qr_token) {
+      return res.status(400).json({ error: 'El equipo no tiene QR Token' });
+    }
+
+    const baseUrl =
+      process.env.FRONTEND_URL ||
+      req.headers.origin ||
+      'http://localhost:5173';
+
+    const qrUrl = `${baseUrl}/validar-equipo/${data.qr_token}`;
+    const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+      errorCorrectionLevel: 'H',
+      margin: 2,
+      width: 300
+    });
+
+    const qrBuffer = Buffer.from(
+      qrDataUrl.replace(/^data:image\/png;base64,/, ''),
+      'base64'
+    );
+
+    const fileName = `Etiqueta_QR_${data.service_tag || data.equipo_id}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    const doc = new PDFDocument({
+      size: [650, 330],
+      margin: 25
+    });
+
+    doc.pipe(res);
+
+    doc.rect(10, 10, 630, 310).stroke();
+
+    doc.font('Helvetica-Bold')
+      .fontSize(28)
+      .text('FORESIGHT', 0, 25, { align: 'center' });
+
+    doc.font('Helvetica-Bold')
+      .fontSize(16)
+      .text('Foresight Mexico Technology Co., Ltd.', 0, 58, { align: 'center' });
+
+    doc.image(qrBuffer, 40, 95, {
+      width: 190,
+      height: 190
+    });
+
+    const x = 260;
+    let y = 95;
+
+    const codigoActivo = `FSMX-${data.service_tag}-${data.equipo_id}`;
+    const permisoTexto = data.permiso_salida === 1
+      ? 'AUTORIZADO PARA SALIR'
+      : 'NO AUTORIZADO PARA SALIR';
+
+    const fechaAsignacion = data.fecha_asig
+      ? new Date(data.fecha_asig).toLocaleDateString('es-MX')
+      : 'N/A';
+
+    function linea(label, value) {
+      doc.font('Helvetica-Bold').fontSize(10).text(label, x, y);
+      doc.font('Helvetica').fontSize(13).text(value || 'N/A', x, y + 13);
+      doc.moveTo(x, y + 34).lineTo(610, y + 34).stroke();
+      y += 40;
+    }
+
+    linea('CÓDIGO ACTIVO', codigoActivo);
+    linea('EQUIPO', `${data.marca || ''} ${data.modelo || ''}`.trim());
+    linea('EQUIPO', `${data.tipo || ''}`.trim());
+    linea('PERMISO DE SALIDA', permisoTexto);
+    linea('FECHA ASIGNACIÓN', fechaAsignacion);
+
+    doc.end();
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   getInventarioNuevo,
   getInventarioViejo,
@@ -495,6 +653,9 @@ module.exports = {
   postGenerarLinkFirma,
   getDatosFirmaToken,
   postGuardarFirmaToken,
-  getHistorialEntregas
+  getHistorialEntregas,
+  getEquipoPorQrToken,
+  patchPermisoSalida,
+  getEtiquetaQrPDF,
 
 };

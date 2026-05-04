@@ -347,6 +347,52 @@ async function obtenerEquipoPorQrToken(token) {
   }
 }
 
+async function actualizarPermisoSalida(equipoId, permisoSalida) {
+  const db = await crearConexion();
+
+  try {
+    const [result] = await db.execute(`
+      UPDATE equipos
+      SET permiso_salida = ?
+      WHERE equipo_id = ?
+    `, [permisoSalida, equipoId]);
+
+    return result;
+  } finally {
+    await db.end();
+  }
+}
+
+  async function obtenerEquipoEtiquetaQR(equipoId) {
+    const db = await crearConexion();
+
+    try {
+      const [rows] = await db.execute(`
+        SELECT
+          e.equipo_id,
+          e.qr_token,
+          e.service_tag,
+          e.tipo,
+          e.fecha_asig,
+          e.estado_registro,
+          e.permiso_salida,
+          emp.nombre_completo,
+          emp.departamento,
+          md.marca,
+          md.modelo
+        FROM equipos e
+        LEFT JOIN empleados emp ON emp.empleado_id = e.empleado_id
+        LEFT JOIN marca_dispositivos md ON md.marca_id = e.marca_id
+        WHERE e.equipo_id = ?
+        LIMIT 1
+      `, [equipoId]);
+
+      return rows;
+    } finally {
+      await db.end();
+    }
+  }
+
 module.exports = {
   obtenerInventarioNuevo,
   obtenerInventarioViejo,
@@ -361,4 +407,6 @@ module.exports = {
   obtenerHistorialEntregas,
 
   obtenerEquipoPorQrToken,
+  actualizarPermisoSalida,
+  obtenerEquipoEtiquetaQR
 };
