@@ -633,8 +633,7 @@ async function getEtiquetaQrPDF(req, res) {
 
     linea('CÓDIGO ACTIVO', codigoActivo);
     linea('EQUIPO', `${data.marca || ''} ${data.modelo || ''}`.trim());
-    linea('EQUIPO', `${data.tipo || ''}`.trim());
-    linea('PERMISO DE SALIDA', permisoTexto);
+    linea('TIPO', `${data.tipo || ''}`.trim());
     linea('FECHA ASIGNACIÓN', fechaAsignacion);
 
     doc.end();
