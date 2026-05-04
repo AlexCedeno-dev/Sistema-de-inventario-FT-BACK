@@ -299,7 +299,7 @@ async function guardarDocumentoResponsivaDigital({ equipoId, nombreArchivo, ruta
   };
 }
 
-async function generarLinkFirma({ equipoId, entregadoPor, tipoEntregador, baseUrl }) {
+async function generarLinkFirma({ equipoId, entregadoPor, tipoEntregador, baseUrl, frontendPath = '' }) {
   const id = Number(equipoId);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -345,7 +345,7 @@ async function generarLinkFirma({ equipoId, entregadoPor, tipoEntregador, baseUr
   return {
     status: 'ok',
     token,
-    url: `${baseUrl}/firma/${token}`
+    url: `${baseUrl}${frontendPath}/firma/${token}`
   };
 }
 
