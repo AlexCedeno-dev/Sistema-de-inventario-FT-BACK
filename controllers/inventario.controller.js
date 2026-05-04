@@ -322,11 +322,15 @@ async function postGenerarLinkFirma(req, res) {
       req.headers.origin ||
       'http://localhost:5173';
 
+    const frontendPath =
+      process.env.FRONTEND_PATH || '';
+
     const result = await inventarioService.generarLinkFirma({
       equipoId,
       entregadoPor,
       tipoEntregador,
-      baseUrl
+      baseUrl,
+      frontendPath
     });
 
     res.json(result);
