@@ -570,7 +570,10 @@ async function getEtiquetaQrPDF(req, res) {
       req.headers.origin ||
       'http://localhost:5173';
 
-    const qrUrl = `${baseUrl}/validar-equipo/${data.qr_token}`;
+    const frontendPath =
+      process.env.FRONTEND_PATH || '/inventory-it';
+
+    const qrUrl = `${baseUrl}${frontendPath}/validar-equipo/${data.qr_token}`;
     const qrDataUrl = await QRCode.toDataURL(qrUrl, {
       errorCorrectionLevel: 'H',
       margin: 2,
