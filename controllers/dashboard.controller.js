@@ -5,8 +5,14 @@ async function getDashboard(req, res) {
     const result = await dashboardService.obtenerDashboard();
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('ERROR EN /dashboard-monitoreo:', error);
+
+    res.status(500).json({
+      error: error.message
+    });
   }
 }
 
-module.exports = { getDashboard };
+module.exports = {
+  getDashboard
+};
