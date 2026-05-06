@@ -292,19 +292,25 @@ async function liberarMonitoreoPorEquipoId(equipoId) {
   const db = await crearConexion();
 
   try {
-    const [result] = await db.execute(
-      `
-      UPDATE monitoreo_equipos
-      SET registrado_en_inventario = 0,
-          pendiente_registro = 1,
-          equipo_id_registrado = NULL,
-          actualizado_en = CURRENT_TIMESTAMP
-      WHERE equipo_id_registrado = ?
-      `,
+    const [equipoRows] = await db.execute(
+      `SELECT equipo_id, service_tag
+       FROM equipos
+       WHERE equipo_id = ?
+       LIMIT 1`,
       [equipoId]
     );
 
-    return result;
+    const serviceTag = equipoRows[0]?.service_tag || null;
+
+    await db.execute(
+      `UPDATE monitoreo_equipos
+       SET registrado_en_inventario = 0,
+           equipo_id_registrado = NULL,
+           pendiente_registro = 1
+       WHERE equipo_id_registrado = ?
+          OR (? IS NOT NULL AND TRIM(UPPER(service_tag)) = TRIM(UPPER(?)))`,
+      [equipoId, serviceTag, serviceTag]
+    );
   } finally {
     await db.end();
   }

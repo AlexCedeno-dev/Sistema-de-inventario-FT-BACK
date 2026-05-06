@@ -142,13 +142,14 @@ async function obtenerDashboard() {
         emp.planta AS empleado_planta,
         emp.status AS empleado_status
 
-      FROM monitoreo_equipos m
-      LEFT JOIN equipos e
-        ON e.equipo_id = m.equipo_id_registrado
-      LEFT JOIN empleados emp
-        ON emp.empleado_id = e.empleado_id
-      WHERE m.registrado_en_inventario = 1
-      ORDER BY m.last_seen DESC, m.monitoreo_id DESC
+        FROM monitoreo_equipos m
+        INNER JOIN equipos e
+          ON e.equipo_id = m.equipo_id_registrado
+        INNER JOIN empleados emp
+          ON emp.empleado_id = e.empleado_id
+        WHERE m.registrado_en_inventario = 1
+          AND e.empleado_id IS NOT NULL
+        ORDER BY m.last_seen DESC, m.monitoreo_id DESC
     `);
 
     const monitoreoIds = rows.map((row) => row.monitoreo_id).filter(Boolean);
