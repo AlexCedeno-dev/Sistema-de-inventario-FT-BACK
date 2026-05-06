@@ -184,11 +184,12 @@ async function liberarEquipo(equipoId, datosLiberacion = {}) {
     await registroModel.liberarMonitoreoPorEquipoId(equipoId);
     await registroModel.eliminarDatosWindowsPorEquipoId(equipoId);
 
-    // Ya NO borrar documentos, firmas ni equipo físico
-    // await registroModel.eliminarDocumentosPorEquipoId(equipoId);
-    // await registroModel.eliminarFirmasPendientesPorEquipoId(equipoId);
-    // await registroModel.eliminarEquipoPorId(equipoId);
+    // Limpiamos documentos/firma activos de la asignación anterior.
+    // Esto NO borra el equipo físico ni rompe el historial de liberación.
+    await registroModel.eliminarDocumentosPorEquipoId(equipoId);
+    await registroModel.eliminarFirmasPendientesPorEquipoId(equipoId);
 
+    // OJO: esto solo libera el equipo físico, NO lo elimina.
     await registroModel.liberarEquipoFisico(equipoId);
 
     return {
