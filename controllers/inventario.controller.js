@@ -489,6 +489,20 @@ async function getHistorialEntregas(req,res){
 
 }
 
+async function getHistorialLiberaciones(req, res) {
+  try {
+    const filtro = req.query.filtro || 'hoy';
+
+    const result = await inventarioService.obtenerHistorialLiberaciones(filtro);
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message
+    });
+  }
+}
+
 async function getEquipoPorQrToken(req, res) {
   try {
     const { token } = req.params;
@@ -522,7 +536,7 @@ async function getEquipoPorQrToken(req, res) {
         modelo: equipo.modelo,
         permiso_salida: equipo.permiso_salida,
         estado_registro: equipo.estado_registro,
-        fecha_asig: equipo.fecha_asig
+        fecha_alta_equipo: equipo.fecha_alta_equipo
       }
     });
   } catch (error) {
@@ -624,8 +638,8 @@ async function getEtiquetaQrPDF(req, res) {
       ? 'AUTORIZADO PARA SALIR'
       : 'NO AUTORIZADO PARA SALIR';
 
-    const fechaAsignacion = data.fecha_asig
-      ? new Date(data.fecha_asig).toLocaleDateString('es-MX')
+    const fechaAltaEquipo = data.fecha_alta_equipo
+      ? new Date(data.fecha_alta_equipo).toLocaleDateString('es-MX')
       : 'N/A';
 
     function linea(label, value) {
@@ -638,7 +652,7 @@ async function getEtiquetaQrPDF(req, res) {
     linea('CÓDIGO ACTIVO', codigoActivo);
     linea('EQUIPO', `${data.marca || ''} ${data.modelo || ''}`.trim());
     linea('TIPO', `${data.tipo || ''}`.trim());
-    linea('FECHA ASIGNACIÓN', fechaAsignacion);
+    linea('FECHA ALTA EQUIPO', fechaAltaEquipo);
 
     doc.end();
 
@@ -660,8 +674,9 @@ module.exports = {
   getDatosFirmaToken,
   postGuardarFirmaToken,
   getHistorialEntregas,
+  getHistorialLiberaciones,
   getEquipoPorQrToken,
   patchPermisoSalida,
   getEtiquetaQrPDF,
-
+  
 };

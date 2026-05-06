@@ -311,6 +311,45 @@ async function obtenerHistorialEntregas(filtro) {
   return rows;
 }
 
+async function obtenerHistorialLiberaciones(filtro) {
+  const db = await crearConexion();
+
+  try {
+    let where = 'DATE(fecha_liberacion) = CURDATE()';
+
+    if (filtro === 'semana') {
+      where = 'YEARWEEK(fecha_liberacion, 1) = YEARWEEK(CURDATE(), 1)';
+    }
+
+    if (filtro === 'mes') {
+      where = `
+        MONTH(fecha_liberacion) = MONTH(CURDATE())
+        AND YEAR(fecha_liberacion) = YEAR(CURDATE())
+      `;
+    }
+
+    const [rows] = await db.execute(`
+      SELECT
+        historial_liberacion_id,
+        equipo_id,
+        empleado_id,
+        service_tag,
+        empleado_nombre,
+        liberado_por,
+        tipo_liberador,
+        estado,
+        fecha_liberacion
+      FROM historial_liberaciones
+      WHERE ${where}
+      ORDER BY fecha_liberacion DESC
+    `);
+
+    return rows;
+  } finally {
+    await db.end();
+  }
+}
+
 async function obtenerEquipoPorQrToken(token) {
   const db = await crearConexion();
 
@@ -323,6 +362,7 @@ async function obtenerEquipoPorQrToken(token) {
         e.tipo,
         e.nombre_equipo,
         e.fecha_asig,
+        e.fecha_alta_equipo,
         e.estado_registro,
         emp.nombre_completo AS empleado_asignado,
         emp.departamento,
@@ -373,7 +413,7 @@ async function actualizarPermisoSalida(equipoId, permisoSalida) {
           e.qr_token,
           e.service_tag,
           e.tipo,
-          e.fecha_asig,
+          e.fecha_alta_equipo,
           e.estado_registro,
           e.permiso_salida,
           emp.nombre_completo,
@@ -405,6 +445,7 @@ module.exports = {
   marcarFirmaComoCompletada,
 
   obtenerHistorialEntregas,
+  obtenerHistorialLiberaciones,
 
   obtenerEquipoPorQrToken,
   actualizarPermisoSalida,

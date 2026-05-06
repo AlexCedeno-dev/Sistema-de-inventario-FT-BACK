@@ -813,6 +813,66 @@ async function obtenerDetalleEquipo(equipoId) {
     }
 }
 
+async function obtenerDatosHistorialLiberacion(equipoId) {
+    const db = await crearConexion();
+
+    try {
+      const [rows] = await db.execute(
+        `
+        SELECT
+          e.equipo_id,
+          e.empleado_id,
+          e.service_tag,
+          emp.nombre_completo AS empleado_nombre
+        FROM equipos e
+        LEFT JOIN empleados emp
+          ON emp.empleado_id = e.empleado_id
+        WHERE e.equipo_id = ?
+        LIMIT 1
+        `,
+        [equipoId]
+      );
+
+      return rows;
+    } finally {
+      await db.end();
+    }
+  }
+
+  async function insertarHistorialLiberacion(data) {
+    const db = await crearConexion();
+
+    try {
+      const [result] = await db.execute(
+        `
+        INSERT INTO historial_liberaciones (
+          equipo_id,
+          empleado_id,
+          service_tag,
+          empleado_nombre,
+          liberado_por,
+          tipo_liberador,
+          estado,
+          fecha_liberacion
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'LIBERADO', CURRENT_TIMESTAMP)
+        `,
+        [
+          data.equipoId || null,
+          data.empleadoId || null,
+          data.serviceTag || 'N/A',
+          data.empleadoNombre || null,
+          data.liberadoPor,
+          data.tipoLiberador
+        ]
+      );
+
+      return result;
+    } finally {
+      await db.end();
+    }
+}
+
 async function liberarEquipoFisico(equipoId) {
   const db = await crearConexion();
 
@@ -858,5 +918,9 @@ module.exports = {
   actualizarEquipoCompleto,
 
   obtenerDetalleEquipo,
+
+  obtenerDatosHistorialLiberacion,
+  insertarHistorialLiberacion,
+
   liberarEquipoFisico
 };

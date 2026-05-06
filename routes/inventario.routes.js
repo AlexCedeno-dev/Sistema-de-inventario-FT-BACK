@@ -31,6 +31,8 @@ router.post('/firma/:token/guardar', inventarioController.postGuardarFirmaToken)
 
 router.get('/entregas-historial', inventarioController.getHistorialEntregas);
 
+router.get('/liberaciones-historial', inventarioController.getHistorialLiberaciones);
+
 router.get('/equipos/qr/:token', inventarioController.getEquipoPorQrToken); 
 
 router.patch('/equipos/:equipoId/permiso-salida', inventarioController.patchPermisoSalida);

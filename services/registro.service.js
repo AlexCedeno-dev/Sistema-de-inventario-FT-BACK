@@ -133,20 +133,53 @@ async function registrarEquipo(body) {
     };
 }
 
-async function liberarEquipo(equipoId) {
+async function liberarEquipo(equipoId, datosLiberacion = {}) {
     if (!Number.isInteger(equipoId) || equipoId <= 0) {
         const error = new Error('ID de equipo inválido');
         error.statusCode = 400;
         throw error;
     }
 
-    const equipoRows = await registroModel.buscarEquipoPorId(equipoId);
+    const liberadoPor = String(datosLiberacion.liberadoPor || '').trim();
+
+    const tipoRaw = String(datosLiberacion.tipoLiberador || '')
+        .trim()
+        .toUpperCase();
+
+    const tipoLiberador = tipoRaw === 'EMPLEADO_IT'
+        ? 'IT'
+        : tipoRaw;
+
+    if (!liberadoPor) {
+        const error = new Error('Falta nombre de quien libera el equipo');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (!['IT', 'BECARIO'].includes(tipoLiberador)) {
+        const error = new Error('Tipo de liberador inválido');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const equipoRows = await registroModel.obtenerDatosHistorialLiberacion(equipoId);
 
     if (equipoRows.length === 0) {
         const error = new Error('Equipo no encontrado');
         error.statusCode = 404;
         throw error;
     }
+
+    const equipo = equipoRows[0];
+
+    await registroModel.insertarHistorialLiberacion({
+        equipoId: equipo.equipo_id,
+        empleadoId: equipo.empleado_id,
+        serviceTag: equipo.service_tag,
+        empleadoNombre: equipo.empleado_nombre,
+        liberadoPor,
+        tipoLiberador
+    });
 
     await registroModel.liberarMonitoreoPorEquipoId(equipoId);
     await registroModel.eliminarDatosWindowsPorEquipoId(equipoId);
@@ -161,7 +194,9 @@ async function liberarEquipo(equipoId) {
     return {
         status: 'ok',
         equipo_id: equipoId,
-        liberado: true
+        liberado: true,
+        liberado_por: liberadoPor,
+        tipo_liberador: tipoLiberador
     };
 }
 

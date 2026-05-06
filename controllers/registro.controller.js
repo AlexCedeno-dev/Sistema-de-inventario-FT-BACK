@@ -18,21 +18,33 @@ async function postRegistrarEquipo(req, res) {
 }
 
 async function postLiberarEquipo(req, res) {
-  try {
-    const equipoId = Number(req.params.equipoId);
-    const result = await registroService.liberarEquipo(equipoId);
-    res.json(result);
-  } catch (error) {
-    const statusCode = error.statusCode || 500;
+    try {
+      const equipoId = Number(req.params.equipoId);
 
-    const payload = { error: error.message };
+      const {
+        liberadoPor,
+        tipoLiberador,
+        liberado_por,
+        tipo_liberador
+      } = req.body || {};
 
-    if (error.extra) {
-      Object.assign(payload, error.extra);
+      const result = await registroService.liberarEquipo(equipoId, {
+        liberadoPor: liberadoPor || liberado_por,
+        tipoLiberador: tipoLiberador || tipo_liberador
+      });
+
+      res.json(result);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+
+      const payload = { error: error.message };
+
+      if (error.extra) {
+        Object.assign(payload, error.extra);
+      }
+
+      res.status(statusCode).json(payload);
     }
-
-    res.status(statusCode).json(payload);
-  }
 }
 
 async function putActualizarEquipo(req, res) {

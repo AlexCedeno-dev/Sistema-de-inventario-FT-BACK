@@ -372,6 +372,10 @@ async function obtenerHistorialEntregas(filtro){
  .obtenerHistorialEntregas(filtro);
 }
 
+async function obtenerHistorialLiberaciones(filtro) {
+  return await inventarioModel.obtenerHistorialLiberaciones(filtro);
+}
+
 module.exports = {
   listarInventarioNuevo,
   listarInventarioViejo,
@@ -386,5 +390,6 @@ module.exports = {
   generarLinkFirma,
   obtenerDatosFirmaPorToken,
 
-  obtenerHistorialEntregas
+  obtenerHistorialEntregas,
+  obtenerHistorialLiberaciones
 };
