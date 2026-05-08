@@ -33,6 +33,8 @@ router.get('/entregas-historial', inventarioController.getHistorialEntregas);
 
 router.get('/liberaciones-historial', inventarioController.getHistorialLiberaciones);
 
+router.get('/liberaciones-historial/:historialLiberacionId',inventarioController.getDetalleHistorialLiberacion);
+
 router.get('/equipos/qr/:token', inventarioController.getEquipoPorQrToken); 
 
 router.patch('/equipos/:equipoId/permiso-salida', inventarioController.patchPermisoSalida);

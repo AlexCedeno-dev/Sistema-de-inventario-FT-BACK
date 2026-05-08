@@ -819,7 +819,7 @@ async function obtenerDetalleEquipo(equipoId) {
     }
 }
 
-async function obtenerDatosHistorialLiberacion(equipoId) {
+  async function obtenerDatosHistorialLiberacion(equipoId) {
     const db = await crearConexion();
 
     try {
@@ -828,11 +828,83 @@ async function obtenerDatosHistorialLiberacion(equipoId) {
         SELECT
           e.equipo_id,
           e.empleado_id,
+          e.marca_id AS equipo_marca_id,
           e.service_tag,
-          emp.nombre_completo AS empleado_nombre
+          e.serial_number AS equipo_serial_number,
+          e.tipo AS equipo_tipo,
+          e.nombre_equipo AS equipo_hostname,
+          e.hostname_detectado AS equipo_hostname_detectado,
+          e.bios_password,
+          e.specs AS equipo_specs,
+
+          DATE_FORMAT(e.fecha_compra, '%Y-%m-%d') AS equipo_fecha_compra,
+          DATE_FORMAT(e.fecha_asig, '%Y-%m-%d') AS equipo_fecha_asig,
+          DATE_FORMAT(e.start_warranty, '%Y-%m-%d') AS equipo_start_warranty,
+          DATE_FORMAT(e.end_warranty, '%Y-%m-%d') AS equipo_end_warranty,
+          DATE_FORMAT(e.fecha_alta_equipo, '%Y-%m-%d %H:%i:%s') AS equipo_fecha_alta_equipo,
+
+          e.permiso_salida AS equipo_permiso_salida,
+          e.qr_token AS equipo_qr_token,
+          e.estado_registro AS equipo_estado_registro_anterior,
+
+          emp.nombre_completo AS empleado_nombre,
+          emp.departamento AS empleado_departamento,
+          emp.planta AS empleado_planta,
+          emp.status AS empleado_status,
+
+          md.marca AS equipo_marca,
+          md.modelo AS equipo_modelo,
+
+          dw.local_user_windows,
+          dw.password_windows,
+          dw.usuario_admin,
+          dw.password_admin,
+
+          acc.acceso_id,
+          acc.licencia_office,
+
+          enr.correo_enrrolado,
+          enr.password_enrrolado,
+
+          nas.usuario_nas,
+          nas.password_nas,
+
+          vpn.usuario_vpn,
+          vpn.password_vpn,
+
+          ost.usuario_osticket,
+          ost.password_osticket
+
         FROM equipos e
+
         LEFT JOIN empleados emp
           ON emp.empleado_id = e.empleado_id
+
+        LEFT JOIN marca_dispositivos md
+          ON md.marca_id = e.marca_id
+
+        LEFT JOIN datos_windows dw
+          ON dw.equipo_id = e.equipo_id
+
+        LEFT JOIN licencias_accesos acc
+          ON acc.acceso_id = (
+            SELECT MAX(la.acceso_id)
+            FROM licencias_accesos la
+            WHERE la.empleado_id = e.empleado_id
+          )
+
+        LEFT JOIN licencia_enrrolado enr
+          ON enr.acceso_id = acc.acceso_id
+
+        LEFT JOIN licencia_nas nas
+          ON nas.acceso_id = acc.acceso_id
+
+        LEFT JOIN licencia_vpn vpn
+          ON vpn.acceso_id = acc.acceso_id
+
+        LEFT JOIN licencia_osticket ost
+          ON ost.acceso_id = acc.acceso_id
+
         WHERE e.equipo_id = ?
         LIMIT 1
         `,
@@ -848,7 +920,19 @@ async function obtenerDatosHistorialLiberacion(equipoId) {
   async function insertarHistorialLiberacion(data) {
     const db = await crearConexion();
 
+    const get = (...keys) => {
+      for (const key of keys) {
+        if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+          return data[key];
+        }
+      }
+
+      return null;
+    };
+
     try {
+      const snapshotJson = JSON.stringify(data);
+
       const [result] = await db.execute(
         `
         INSERT INTO historial_liberaciones (
@@ -856,20 +940,113 @@ async function obtenerDatosHistorialLiberacion(equipoId) {
           empleado_id,
           service_tag,
           empleado_nombre,
+          empleado_departamento,
+          empleado_planta,
+          empleado_status,
+
+          equipo_tipo,
+          equipo_marca_id,
+          equipo_marca,
+          equipo_modelo,
+          equipo_hostname,
+          equipo_hostname_detectado,
+          equipo_serial_number,
+          equipo_specs,
+          bios_password,
+          equipo_fecha_compra,
+          equipo_fecha_asig,
+          equipo_start_warranty,
+          equipo_end_warranty,
+          equipo_fecha_alta_equipo,
+          equipo_permiso_salida,
+          equipo_qr_token,
+          equipo_estado_registro_anterior,
+
+          local_user_windows,
+          password_windows,
+          usuario_admin,
+          password_admin,
+
+          acceso_id,
+          licencia_office,
+          correo_enrrolado,
+          password_enrrolado,
+
+          usuario_nas,
+          password_nas,
+
+          usuario_vpn,
+          password_vpn,
+
+          usuario_osticket,
+          password_osticket,
+
           liberado_por,
           tipo_liberador,
           estado,
-          fecha_liberacion
+          fecha_liberacion,
+          snapshot_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, 'LIBERADO', CURRENT_TIMESTAMP)
+        VALUES (
+          ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?,
+          ?, ?,
+          ?, ?,
+          ?, ?, 'LIBERADO', CURRENT_TIMESTAMP, ?
+        )
         `,
         [
-          data.equipoId || null,
-          data.empleadoId || null,
-          data.serviceTag || 'N/A',
-          data.empleadoNombre || null,
-          data.liberadoPor,
-          data.tipoLiberador
+          get('equipo_id', 'equipoId'),
+          get('empleado_id', 'empleadoId'),
+          get('service_tag', 'serviceTag') || 'N/A',
+          get('empleado_nombre', 'empleadoNombre'),
+          get('empleado_departamento', 'empleadoDepartamento'),
+          get('empleado_planta', 'empleadoPlanta'),
+          get('empleado_status', 'empleadoStatus'),
+
+          get('equipo_tipo', 'equipoTipo'),
+          get('equipo_marca_id', 'equipoMarcaId'),
+          get('equipo_marca', 'equipoMarca'),
+          get('equipo_modelo', 'equipoModelo'),
+          get('equipo_hostname', 'equipoHostname'),
+          get('equipo_hostname_detectado', 'equipoHostnameDetectado'),
+          get('equipo_serial_number', 'equipoSerialNumber'),
+          get('equipo_specs', 'equipoSpecs'),
+          get('bios_password', 'biosPassword'),
+          get('equipo_fecha_compra', 'equipoFechaCompra'),
+          get('equipo_fecha_asig', 'equipoFechaAsig'),
+          get('equipo_start_warranty', 'equipoStartWarranty'),
+          get('equipo_end_warranty', 'equipoEndWarranty'),
+          get('equipo_fecha_alta_equipo', 'equipoFechaAltaEquipo'),
+          get('equipo_permiso_salida', 'equipoPermisoSalida'),
+          get('equipo_qr_token', 'equipoQrToken'),
+          get('equipo_estado_registro_anterior', 'equipoEstadoRegistroAnterior'),
+
+          get('local_user_windows', 'localUserWindows'),
+          get('password_windows', 'passwordWindows'),
+          get('usuario_admin', 'usuarioAdmin'),
+          get('password_admin', 'passwordAdmin'),
+
+          get('acceso_id', 'accesoId'),
+          get('licencia_office', 'licenciaOffice'),
+          get('correo_enrrolado', 'correoEnrrolado'),
+          get('password_enrrolado', 'passwordEnrrolado'),
+
+          get('usuario_nas', 'usuarioNas'),
+          get('password_nas', 'passwordNas'),
+
+          get('usuario_vpn', 'usuarioVpn'),
+          get('password_vpn', 'passwordVpn'),
+
+          get('usuario_osticket', 'usuarioOsticket'),
+          get('password_osticket', 'passwordOsticket'),
+
+          get('liberado_por', 'liberadoPor'),
+          get('tipo_liberador', 'tipoLiberador'),
+          snapshotJson
         ]
       );
 
@@ -877,7 +1054,7 @@ async function obtenerDatosHistorialLiberacion(equipoId) {
     } finally {
       await db.end();
     }
-}
+  }
 
 async function liberarEquipoFisico(equipoId) {
   const db = await crearConexion();

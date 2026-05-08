@@ -376,6 +376,41 @@ async function obtenerHistorialLiberaciones(filtro) {
   return await inventarioModel.obtenerHistorialLiberaciones(filtro);
 }
 
+  async function obtenerDetalleHistorialLiberacion(historialLiberacionId) {
+    const id = Number(historialLiberacionId);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      const error = new Error('ID de historial inválido');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const rows = await inventarioModel.obtenerDetalleHistorialLiberacion(id);
+
+    if (!rows || rows.length === 0) {
+      const error = new Error('Historial de liberación no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const detalle = rows[0];
+
+    let snapshot = null;
+
+    if (detalle.snapshot_json) {
+      try {
+        snapshot = JSON.parse(detalle.snapshot_json);
+      } catch (error) {
+        snapshot = null;
+      }
+    }
+
+    return {
+      ...detalle,
+      snapshot
+    };
+  }
+
 module.exports = {
   listarInventarioNuevo,
   listarInventarioViejo,
@@ -391,5 +426,6 @@ module.exports = {
   obtenerDatosFirmaPorToken,
 
   obtenerHistorialEntregas,
-  obtenerHistorialLiberaciones
+  obtenerHistorialLiberaciones,
+  obtenerDetalleHistorialLiberacion
 };

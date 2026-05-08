@@ -503,6 +503,25 @@ async function getHistorialLiberaciones(req, res) {
   }
 }
 
+  async function getDetalleHistorialLiberacion(req, res) {
+    try {
+      const historialLiberacionId = Number(req.params.historialLiberacionId);
+
+      const result =
+        await inventarioService.obtenerDetalleHistorialLiberacion(
+          historialLiberacionId
+        );
+
+      res.json(result);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+
+      res.status(statusCode).json({
+        error: error.message
+      });
+    }
+  }
+
 async function getEquipoPorQrToken(req, res) {
   try {
     const { token } = req.params;
@@ -675,8 +694,8 @@ module.exports = {
   postGuardarFirmaToken,
   getHistorialEntregas,
   getHistorialLiberaciones,
+  getDetalleHistorialLiberacion,
   getEquipoPorQrToken,
   patchPermisoSalida,
   getEtiquetaQrPDF,
-  
 };

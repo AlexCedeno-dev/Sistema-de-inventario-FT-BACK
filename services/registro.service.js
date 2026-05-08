@@ -173,12 +173,9 @@ async function liberarEquipo(equipoId, datosLiberacion = {}) {
     const equipo = equipoRows[0];
 
     await registroModel.insertarHistorialLiberacion({
-        equipoId: equipo.equipo_id,
-        empleadoId: equipo.empleado_id,
-        serviceTag: equipo.service_tag,
-        empleadoNombre: equipo.empleado_nombre,
-        liberadoPor,
-        tipoLiberador
+        ...equipo,
+        liberado_por: liberadoPor,
+        tipo_liberador: tipoLiberador
     });
 
     await registroModel.liberarMonitoreoPorEquipoId(equipoId);

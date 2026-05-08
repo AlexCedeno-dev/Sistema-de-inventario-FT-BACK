@@ -350,6 +350,26 @@ async function obtenerHistorialLiberaciones(filtro) {
   }
 }
 
+  async function obtenerDetalleHistorialLiberacion(historialLiberacionId) {
+    const db = await crearConexion();
+
+    try {
+      const [rows] = await db.execute(
+        `
+        SELECT *
+        FROM historial_liberaciones
+        WHERE historial_liberacion_id = ?
+        LIMIT 1
+        `,
+        [historialLiberacionId]
+      );
+
+      return rows;
+    } finally {
+      await db.end();
+    }
+  }
+
 async function obtenerEquipoPorQrToken(token) {
   const db = await crearConexion();
 
@@ -446,6 +466,7 @@ module.exports = {
 
   obtenerHistorialEntregas,
   obtenerHistorialLiberaciones,
+  obtenerDetalleHistorialLiberacion,
 
   obtenerEquipoPorQrToken,
   actualizarPermisoSalida,
