@@ -651,10 +651,10 @@ async function getEtiquetaQrPDF(req, res) {
 
     doc.fillColor('#000000');
 
-    // Borde guía suave
-    doc.lineWidth(0.5)
-      .rect(mmToPt(1.5), mmToPt(1.5), labelWidth - mmToPt(3), labelHeight - mmToPt(3))
-      .stroke();
+    // // Borde guía suave
+    // doc.lineWidth(0.5)
+    //   .rect(mmToPt(1.5), mmToPt(1.5), labelWidth - mmToPt(3), labelHeight - mmToPt(3))
+    //   .stroke();
 
     // Logo centrado arriba
     if (fs.existsSync(logoPath)) {
