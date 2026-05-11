@@ -8,6 +8,10 @@ const GERENTE_NOMBRE = 'Anibal Cervantes Duran';
 const GERENTE_FIRMA_PATH = path.join(__dirname, '../assets/firmas/firma-anibal.png');
 const QRCode = require('qrcode');
 
+function mmToPt(mm) {
+  return mm * 2.83465;
+}
+
 
 async function getInventarioNuevo(req, res) {
   try {
@@ -611,10 +615,11 @@ async function getEtiquetaQrPDF(req, res) {
       process.env.FRONTEND_PATH || '/inventory-it';
 
     const qrUrl = `${baseUrl}${frontendPath}/validar-equipo/${data.qr_token}`;
+
     const qrDataUrl = await QRCode.toDataURL(qrUrl, {
       errorCorrectionLevel: 'H',
-      margin: 2,
-      width: 300
+      margin: 1,
+      width: 420
     });
 
     const qrBuffer = Buffer.from(
@@ -627,55 +632,142 @@ async function getEtiquetaQrPDF(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 
+    // Medida real de etiqueta: 102 mm x 76 mm
+    const labelWidth = mmToPt(102);
+    const labelHeight = mmToPt(76);
+
     const doc = new PDFDocument({
-      size: [650, 330],
-      margin: 25
+      size: [labelWidth, labelHeight],
+      margin: 0
     });
 
     doc.pipe(res);
 
-    doc.rect(10, 10, 630, 310).stroke();
+    const logoPath = path.join(__dirname, '../assets/logos/foresight-logo.png');
 
+    // Fondo blanco
+    doc.rect(0, 0, labelWidth, labelHeight)
+      .fill('#FFFFFF');
+
+    doc.fillColor('#000000');
+
+    // Borde guía suave
+    doc.lineWidth(0.5)
+      .rect(mmToPt(1.5), mmToPt(1.5), labelWidth - mmToPt(3), labelHeight - mmToPt(3))
+      .stroke();
+
+    // Logo centrado arriba
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, mmToPt(32), mmToPt(3.5), {
+        fit: [mmToPt(38), mmToPt(15)],
+        align: 'center',
+        valign: 'center'
+      });
+    } else {
+      doc.font('Helvetica-Bold')
+        .fontSize(20)
+        .text('FORESIGHT', 0, mmToPt(5), {
+          width: labelWidth,
+          align: 'center'
+        });
+    }
+
+    // Nombre empresa
     doc.font('Helvetica-Bold')
-      .fontSize(28)
-      .text('FORESIGHT', 0, 25, { align: 'center' });
+      .fontSize(10)
+      .text('Foresight Mexico Technology Co., Ltd.', 0, mmToPt(17), {
+        width: labelWidth,
+        align: 'center'
+      });
 
-    doc.font('Helvetica-Bold')
-      .fontSize(16)
-      .text('Foresight Mexico Technology Co., Ltd.', 0, 58, { align: 'center' });
+    // QR lado izquierdo
+    const qrX = mmToPt(5);
+    const qrY = mmToPt(25);
+    const qrSize = mmToPt(45);
 
-    doc.image(qrBuffer, 40, 95, {
-      width: 190,
-      height: 190
+    doc.image(qrBuffer, qrX, qrY, {
+      width: qrSize,
+      height: qrSize
     });
 
-    const x = 260;
-    let y = 95;
+    // Línea separadora vertical
+    const separatorX = mmToPt(52);
+    doc.lineWidth(1)
+      .moveTo(separatorX, mmToPt(24))
+      .lineTo(separatorX, mmToPt(70))
+      .stroke();
 
-    const codigoActivo = `FSMX-${data.service_tag}-${data.equipo_id}`;
-    const permisoTexto = data.permiso_salida === 1
-      ? 'AUTORIZADO PARA SALIR'
-      : 'NO AUTORIZADO PARA SALIR';
+    // Datos lado derecho
+    const x = mmToPt(55);
+    const rightWidth = mmToPt(43);
+    let y = mmToPt(25);
+
+    const codigoActivo = `FSMX-${data.service_tag || 'SIN-ST'}-${data.equipo_id}`;
 
     const fechaAltaEquipo = data.fecha_alta_equipo
       ? new Date(data.fecha_alta_equipo).toLocaleDateString('es-MX')
       : 'N/A';
 
-    function linea(label, value) {
-      doc.font('Helvetica-Bold').fontSize(10).text(label, x, y);
-      doc.font('Helvetica').fontSize(13).text(value || 'N/A', x, y + 13);
-      doc.moveTo(x, y + 34).lineTo(610, y + 34).stroke();
-      y += 40;
+    const modeloTexto = `${data.marca || ''} ${data.modelo || ''}`.trim() || 'N/A';
+
+    function campo(label, value, options = {}) {
+      const labelSize = options.labelSize || 6.5;
+      const valueSize = options.valueSize || 8.8;
+      const espacio = options.espacio || mmToPt(11);
+
+      doc.font('Helvetica-Bold')
+        .fontSize(labelSize)
+        .fillColor('#000000')
+        .text(label, x, y, {
+          width: rightWidth,
+          height: mmToPt(4),
+          ellipsis: true
+        });
+
+      doc.font('Helvetica')
+        .fontSize(valueSize)
+        .fillColor('#000000')
+        .text(value || 'N/A', x, y + mmToPt(4), {
+          width: rightWidth,
+          height: mmToPt(6),
+          ellipsis: true
+        });
+
+      y += espacio;
+
+      doc.lineWidth(0.4)
+        .strokeColor('#000000')
+        .moveTo(x, y - mmToPt(1.5))
+        .lineTo(x + rightWidth, y - mmToPt(1.5))
+        .stroke();
+
+      doc.strokeColor('#000000');
     }
 
-    linea('CÓDIGO ACTIVO', codigoActivo);
-    linea('EQUIPO', `${data.marca || ''} ${data.modelo || ''}`.trim());
-    linea('TIPO', `${data.tipo || ''}`.trim());
-    linea('FECHA ALTA EQUIPO', fechaAltaEquipo);
+    campo('CÓDIGO ACTIVO', codigoActivo, {
+      valueSize: 8.8,
+      espacio: mmToPt(11)
+    });
+
+    campo('TIPO', data.tipo || 'N/A', {
+      valueSize: 8.8,
+      espacio: mmToPt(11)
+    });
+
+    campo('EQUIPO', modeloTexto, {
+      valueSize: 8.8,
+      espacio: mmToPt(11)
+    });
+
+    campo('FECHA ALTA EQUIPO', fechaAltaEquipo, {
+      valueSize: 8.3,
+      espacio: mmToPt(10)
+    });
 
     doc.end();
 
   } catch (error) {
+    console.error('Error generando etiqueta QR:', error);
     res.status(500).json({ error: error.message });
   }
 }
