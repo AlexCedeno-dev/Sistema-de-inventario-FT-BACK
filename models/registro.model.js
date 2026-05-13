@@ -528,6 +528,14 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
   const db = await crearConexion();
 
   try {
+    await db.beginTransaction();
+
+    const marcaId = await obtenerOCrearMarcaModeloEnConexion(
+      db,
+      equipoId,
+      body.equipo.marca,
+      body.equipo.modelo
+    );
 
     await db.execute(`
       UPDATE empleados
@@ -544,7 +552,8 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
 
     await db.execute(`
         UPDATE equipos
-        SET tipo = ?,
+        SET marca_id = ?,
+            tipo = ?,
             service_tag = ?,
             nombre_equipo = ?,
             bios_password = ?,
@@ -557,6 +566,7 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
             qr_token = IFNULL(qr_token, UUID())
         WHERE equipo_id = ?
     `,[
+      marcaId,
       body.equipo.tipo,
       body.equipo.service_tag,
       body.equipo.nombre_equipo,
@@ -570,90 +580,234 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
       equipoId
     ]);
 
-    await db.execute(`
-      UPDATE datos_windows
-      SET local_user_windows=?,
-          password_windows=?,
-          usuario_admin=?,
-          password_admin=?
-      WHERE equipo_id=?
-    `,[
-      body.windows.usuarioWindows,
-      body.windows.passwordWindows,
-      body.windows.usuarioAdmin,
-      body.windows.passwordAdmin,
-      equipoId
-    ]);
+    await guardarDatosWindowsEnConexion(db, equipoId, body.windows);
 
-    const [accRows] = await db.execute(`
-      SELECT acceso_id
-      FROM licencias_accesos
-      WHERE empleado_id=?
-      LIMIT 1
-    `,[empleadoId]);
+    const accesoId = await obtenerOCrearAccesoEmpleadoEnConexion(
+      db,
+      empleadoId,
+      body.equipo.licencia_office
+    );
 
-    if(accRows.length){
-      const accesoId = accRows[0].acceso_id;
+    await guardarLicenciaEnrolladoEnConexion(db, accesoId, body.windows);
+    await guardarLicenciaNasEnConexion(db, accesoId, body.accesos);
+    await guardarLicenciaVpnEnConexion(db, accesoId, body.accesos);
+    await guardarLicenciaOsticketEnConexion(db, accesoId, body.accesos);
 
-      await db.execute(`
-       UPDATE licencias_accesos
-       SET licencia_office=?
-       WHERE acceso_id=?
-      `,[
-       body.equipo.licencia_office,
-       accesoId
-      ]);
-
-      await db.execute(`
-       UPDATE licencia_enrrolado
-       SET correo_enrrolado=?,
-           password_enrrolado=?
-       WHERE acceso_id=?
-      `,[
-       body.windows.correoEnrollado,
-       body.windows.passwordEnrollado,
-       accesoId
-      ]);
-
-      await db.execute(`
-       UPDATE licencia_nas
-       SET usuario_nas=?,
-           password_nas=?
-       WHERE acceso_id=?
-      `,[
-       body.accesos.usuarioNAS,
-       body.accesos.passwordNAS,
-       accesoId
-      ]);
-
-      await db.execute(`
-       UPDATE licencia_vpn
-       SET usuario_vpn=?,
-           password_vpn=?
-       WHERE acceso_id=?
-      `,[
-       body.accesos.usuarioVPN,
-       body.accesos.passwordVPN,
-       accesoId
-      ]);
-
-      await db.execute(`
-       UPDATE licencia_osticket
-       SET usuario_osticket=?,
-           password_osticket=?
-       WHERE acceso_id=?
-      `,[
-       body.accesos.usuarioOsticket,
-       body.accesos.passwordOsticket,
-       accesoId
-      ]);
-    }
+    await db.commit();
 
     return {status:'ok'};
 
+  } catch (error) {
+    await db.rollback();
+    throw error;
   } finally {
     await db.end();
   }
+}
+
+async function obtenerOCrearMarcaModeloEnConexion(db, equipoId, marca, modelo) {
+  if (!marca && !modelo) {
+    const [equipoRows] = await db.execute(
+      `
+      SELECT marca_id
+      FROM equipos
+      WHERE equipo_id = ?
+      LIMIT 1
+      `,
+      [equipoId]
+    );
+
+    return equipoRows[0]?.marca_id || null;
+  }
+
+  const [rows] = await db.execute(
+    `
+    SELECT marca_id
+    FROM marca_dispositivos
+    WHERE TRIM(UPPER(COALESCE(marca, ''))) = TRIM(UPPER(COALESCE(?, '')))
+      AND TRIM(UPPER(COALESCE(modelo, ''))) = TRIM(UPPER(COALESCE(?, '')))
+    LIMIT 1
+    `,
+    [marca, modelo]
+  );
+
+  if (rows.length > 0) return rows[0].marca_id;
+
+  const [result] = await db.execute(
+    `
+    INSERT INTO marca_dispositivos (marca, modelo)
+    VALUES (?, ?)
+    `,
+    [marca, modelo]
+  );
+
+  return result.insertId;
+}
+
+async function guardarDatosWindowsEnConexion(db, equipoId, windows) {
+  const [rows] = await db.execute(
+    `
+    SELECT equipo_id
+    FROM datos_windows
+    WHERE equipo_id = ?
+    LIMIT 1
+    `,
+    [equipoId]
+  );
+
+  const values = [
+    windows.usuarioWindows,
+    windows.passwordWindows,
+    windows.usuarioAdmin,
+    windows.passwordAdmin
+  ];
+
+  if (rows.length > 0) {
+    await db.execute(
+      `
+      UPDATE datos_windows
+      SET local_user_windows = ?,
+          password_windows = ?,
+          usuario_admin = ?,
+          password_admin = ?
+      WHERE equipo_id = ?
+      `,
+      [...values, equipoId]
+    );
+    return;
+  }
+
+  await db.execute(
+    `
+    INSERT INTO datos_windows (
+      equipo_id,
+      local_user_windows,
+      password_windows,
+      usuario_admin,
+      password_admin
+    )
+    VALUES (?, ?, ?, ?, ?)
+    `,
+    [equipoId, ...values]
+  );
+}
+
+async function obtenerOCrearAccesoEmpleadoEnConexion(db, empleadoId, licenciaOffice) {
+  const [rows] = await db.execute(
+    `
+    SELECT acceso_id
+    FROM licencias_accesos
+    WHERE empleado_id = ?
+    ORDER BY acceso_id DESC
+    LIMIT 1
+    `,
+    [empleadoId]
+  );
+
+  if (rows.length > 0) {
+    const accesoId = rows[0].acceso_id;
+
+    await db.execute(
+      `
+      UPDATE licencias_accesos
+      SET licencia_office = ?
+      WHERE acceso_id = ?
+      `,
+      [licenciaOffice, accesoId]
+    );
+
+    return accesoId;
+  }
+
+  const [result] = await db.execute(
+    `
+    INSERT INTO licencias_accesos (
+      empleado_id,
+      licencia_office
+    )
+    VALUES (?, ?)
+    `,
+    [empleadoId, licenciaOffice]
+  );
+
+  return result.insertId;
+}
+
+async function actualizarOInsertarPorAcceso(db, tableName, columns, values, accesoId) {
+  const [rows] = await db.execute(
+    `
+    SELECT acceso_id
+    FROM ${tableName}
+    WHERE acceso_id = ?
+    LIMIT 1
+    `,
+    [accesoId]
+  );
+
+  if (rows.length > 0) {
+    const setSql = columns.map((column) => `${column} = ?`).join(', ');
+
+    await db.execute(
+      `
+      UPDATE ${tableName}
+      SET ${setSql}
+      WHERE acceso_id = ?
+      `,
+      [...values, accesoId]
+    );
+    return;
+  }
+
+  await db.execute(
+    `
+    INSERT INTO ${tableName} (
+      acceso_id,
+      ${columns.join(', ')}
+    )
+    VALUES (?, ${columns.map(() => '?').join(', ')})
+    `,
+    [accesoId, ...values]
+  );
+}
+
+async function guardarLicenciaEnrolladoEnConexion(db, accesoId, windows) {
+  await actualizarOInsertarPorAcceso(
+    db,
+    'licencia_enrrolado',
+    ['correo_enrrolado', 'password_enrrolado'],
+    [windows.correoEnrollado, windows.passwordEnrollado],
+    accesoId
+  );
+}
+
+async function guardarLicenciaNasEnConexion(db, accesoId, accesos) {
+  await actualizarOInsertarPorAcceso(
+    db,
+    'licencia_nas',
+    ['usuario_nas', 'password_nas'],
+    [accesos.usuarioNAS, accesos.passwordNAS],
+    accesoId
+  );
+}
+
+async function guardarLicenciaVpnEnConexion(db, accesoId, accesos) {
+  await actualizarOInsertarPorAcceso(
+    db,
+    'licencia_vpn',
+    ['usuario_vpn', 'password_vpn'],
+    [accesos.usuarioVPN, accesos.passwordVPN],
+    accesoId
+  );
+}
+
+async function guardarLicenciaOsticketEnConexion(db, accesoId, accesos) {
+  await actualizarOInsertarPorAcceso(
+    db,
+    'licencia_osticket',
+    ['usuario_osticket', 'password_osticket'],
+    [accesos.usuarioOsticket, accesos.passwordOsticket],
+    accesoId
+  );
 }
 
 async function obtenerOCrearAccesoEmpleado(empleadoId, licenciaOffice = null) {

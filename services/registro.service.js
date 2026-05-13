@@ -215,12 +215,112 @@ async function actualizarEquipo(equipoId, body) {
 
     const empleadoId = rows[0].empleado_id;
 
-    await registroModel.actualizarEquipoCompleto(equipoId, empleadoId, body);
+    if (!empleadoId) {
+        const error = new Error('El equipo no tiene empleado asignado');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const payload = normalizarPayloadActualizacion(body);
+
+    if (!payload.equipo.service_tag) {
+        const error = new Error('Service tag requerido');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const existenteServiceTag =
+        await registroModel.buscarEquipoPorServiceTag(payload.equipo.service_tag);
+
+    const serviceTagEnUsoPorOtroEquipo =
+        existenteServiceTag.some(
+            (equipo) => Number(equipo.equipo_id) !== equipoId
+        );
+
+    if (serviceTagEnUsoPorOtroEquipo) {
+        const error = new Error('El service tag ya pertenece a otro equipo');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    await registroModel.actualizarEquipoCompleto(equipoId, empleadoId, payload);
 
     return {
         status: 'ok',
         equipo_id: equipoId,
         actualizado: true
+    };
+}
+
+function normalizarPayloadActualizacion(body = {}) {
+    const empleado = body.empleado || {};
+    const equipo = body.equipo || {};
+    const windows = body.windows || {};
+    const accesos = body.accesos || {};
+
+    const pick = (...values) => values.find((value) => value !== undefined);
+
+    const textoONull = (valor) => {
+        if (valor === undefined || valor === null) return null;
+
+        const texto = String(valor).trim();
+        return texto === '' ? null : texto;
+    };
+
+    const fechaONull = (valor) => textoONull(valor);
+    const booleanoANumero = (valor) => {
+        if (valor === true || valor === 1 || valor === '1') return 1;
+        if (typeof valor === 'string') {
+            return ['true', 'si', 'sí', 'autorizado'].includes(valor.trim().toLowerCase())
+                ? 1
+                : 0;
+        }
+
+        return 0;
+    };
+
+    return {
+        empleado: {
+            nombre_completo: textoONull(pick(
+                empleado.nombre_completo,
+                empleado.nombreCompleto,
+                body.nombre_completo,
+                body.nombreEmpleado
+            )),
+            departamento: textoONull(pick(empleado.departamento, body.departamento)),
+            planta: textoONull(pick(empleado.planta, body.planta))
+        },
+        equipo: {
+            marca: textoONull(pick(equipo.marca, body.marca)),
+            modelo: textoONull(pick(equipo.modelo, body.modelo)),
+            tipo: textoONull(pick(equipo.tipo, body.tipo)),
+            service_tag: textoONull(pick(equipo.service_tag, equipo.serviceTag, body.service_tag, body.serviceTag)),
+            nombre_equipo: textoONull(pick(equipo.nombre_equipo, equipo.nombreEquipo, body.nombre_equipo, body.hostname)),
+            bios_password: textoONull(pick(equipo.bios_password, equipo.biosPassword, body.bios_password)),
+            specs: textoONull(pick(equipo.specs, body.specs)),
+            fecha_compra: fechaONull(pick(equipo.fecha_compra, equipo.fechaCompra, body.fecha_compra)),
+            fecha_asig: fechaONull(pick(equipo.fecha_asig, equipo.fechaAsignacion, body.fecha_asig)),
+            start_warranty: fechaONull(pick(equipo.start_warranty, equipo.startWarranty, body.start_warranty)),
+            end_warranty: fechaONull(pick(equipo.end_warranty, equipo.endWarranty, body.end_warranty, body.finGarantia)),
+            permiso_salida: booleanoANumero(pick(equipo.permiso_salida, equipo.permisoSalida, body.permiso_salida)),
+            licencia_office: textoONull(pick(equipo.licencia_office, equipo.licenciaOffice, body.licencia_office))
+        },
+        windows: {
+            usuarioWindows: textoONull(pick(windows.usuarioWindows, windows.local_user_windows, body.local_user_windows)),
+            passwordWindows: textoONull(pick(windows.passwordWindows, windows.password_windows, body.password_windows)),
+            usuarioAdmin: textoONull(pick(windows.usuarioAdmin, windows.usuario_admin, body.usuario_admin)),
+            passwordAdmin: textoONull(pick(windows.passwordAdmin, windows.password_admin, body.password_admin)),
+            correoEnrollado: textoONull(pick(windows.correoEnrollado, windows.correo_enrrolado, body.correo_enrrolado)),
+            passwordEnrollado: textoONull(pick(windows.passwordEnrollado, windows.password_enrrolado, body.password_enrrolado))
+        },
+        accesos: {
+            usuarioNAS: textoONull(pick(accesos.usuarioNAS, accesos.usuario_nas, body.usuario_nas)),
+            passwordNAS: textoONull(pick(accesos.passwordNAS, accesos.password_nas, body.password_nas)),
+            usuarioVPN: textoONull(pick(accesos.usuarioVPN, accesos.usuario_vpn, body.usuario_vpn)),
+            passwordVPN: textoONull(pick(accesos.passwordVPN, accesos.password_vpn, body.password_vpn)),
+            usuarioOsticket: textoONull(pick(accesos.usuarioOsticket, accesos.usuario_osticket, body.usuario_osticket)),
+            passwordOsticket: textoONull(pick(accesos.passwordOsticket, accesos.password_osticket, body.password_osticket))
+        }
     };
 }
 
