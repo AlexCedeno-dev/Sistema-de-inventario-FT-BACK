@@ -7,9 +7,12 @@ const registroRoutes = require('./registro.routes');
 const inventarioRoutes = require('./inventario.routes');
 const dashboardRoutes = require('./dashboard.routes');
 const inventarioABCRoutes = require('./inventarioABC.routes');
+const homeRoutes = require('../src/modules/home/home.routes');
 
 router.use('/monitor', monitorRoutes);
 router.use('/agentes', agentesRoutes);
+router.use('/home', homeRoutes);
+
 router.use('/', registroRoutes);
 router.use('/', inventarioRoutes);
 router.use('/', dashboardRoutes);
