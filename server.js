@@ -11,6 +11,8 @@ const routes = require('./routes');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 function getOrigin(value) {
   if (!value) {
     return null;
@@ -35,6 +37,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://192.168.179.6',
   'http://192.168.179.6:3005',
   'http://192.168.179.6:5173',
   getOrigin(process.env.FRONTEND_URL),
