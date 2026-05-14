@@ -11,6 +11,18 @@ const routes = require('./routes');
 
 const app = express();
 
+function getOrigin(value) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value;
+  }
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -23,15 +35,9 @@ app.use(cookieParser());
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-
-  // Servidor frontend por IP sin puerto
   'http://192.168.179.6:3005',
-
-  // Por si pruebas frontend con Vite desde otra PC
   'http://192.168.179.6:5173',
-
-  // Variable del .env
-  process.env.FRONTEND_URL,
+  getOrigin(process.env.FRONTEND_URL),
 ].filter(Boolean);
 
 app.use(cors({
@@ -55,6 +61,10 @@ app.use(cors({
 const frontendPath = path.join(__dirname, 'dist');
 
 app.use('/inventory-it', express.static(frontendPath));
+
+app.get(/^\/inventory-it\/assets\/.*/, (req, res) => {
+  res.status(404).send('Asset no encontrado. Revisa que dist/assets este actualizado.');
+});
 
 app.get('/inventory-it', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
