@@ -133,7 +133,8 @@ app.get("/api/nodeguard/agent-pack", (req, res) => {
 app.get('/', (req, res) => res.send('Servidor activo'));
 
 const PORT = Number(process.env.PORT || 3006);
+const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor activo en toda la red (puerto ${PORT})`);
+app.listen(PORT, HOST, () => {
+  console.log(`Servidor activo en ${HOST}:${PORT}`);
 });
