@@ -1,3 +1,5 @@
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
 const path = require('path');
 const fs = require("fs");
 const archiver = require("archiver");
@@ -12,9 +14,20 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(cors({
-  origin: '*',
+app.use(helmet({
+  contentSecurityPolicy: false,
 }));
+
+app.use(cookieParser());
+
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    process.env.FRONTEND_URL,
+  ].filter(Boolean),
+  credentials: true,
+}));
+
 
 const frontendPath = path.join(__dirname, 'dist');
 

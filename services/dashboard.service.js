@@ -83,7 +83,35 @@ async function obtenerDiscosPorMonitoreo(db, monitoreoIds) {
   return map;
 }
 
+function esErrorConexionTransitorio(error) {
+  return [
+    'ECONNRESET',
+    'PROTOCOL_CONNECTION_LOST',
+    'ETIMEDOUT',
+    'EPIPE'
+  ].includes(error?.code);
+}
+
 async function obtenerDashboard() {
+  const maxIntentos = 2;
+
+  for (let intento = 1; intento <= maxIntentos; intento += 1) {
+    try {
+      return await obtenerDashboardUnaVez();
+    } catch (error) {
+      if (intento < maxIntentos && esErrorConexionTransitorio(error)) {
+        console.warn(
+          `Reintentando /dashboard-monitoreo por error de conexion MySQL (${error.code})`
+        );
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+
+async function obtenerDashboardUnaVez() {
   const db = await crearConexion();
 
   try {
