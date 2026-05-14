@@ -20,34 +20,11 @@ app.use(helmet({
 
 app.use(cookieParser());
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-
-  // Servidor frontend por IP sin puerto
-  'http://192.168.179.6',
-
-  // Por si pruebas frontend con Vite desde otra PC
-  'http://192.168.179.6:5173',
-
-  // Variable del .env
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
 app.use(cors({
-  origin: function (origin, callback) {
-    // Permite peticiones sin origin: curl, Postman, agente NodeGuard, etc.
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    console.log('[CORS BLOQUEADO]', origin);
-    return callback(new Error(`Origen no permitido por CORS: ${origin}`));
-  },
+  origin: [
+    'http://localhost:5173',
+    process.env.FRONTEND_URL,
+  ].filter(Boolean),
   credentials: true,
 }));
 
