@@ -4,6 +4,8 @@ const fs = require('fs');
 const inventarioService = require('../services/inventario.service');
 const inventarioModel = require('../models/inventario.model');
 const { permission } = require('process');
+const { registrarAuditoriaEquipo } = require('../models/auditoria.model');
+const { normalizeRol } = require('../middlewares/auth.middleware');
 const GERENTE_NOMBRE = 'Anibal Cervantes Duran';
 const GERENTE_FIRMA_PATH = path.join(__dirname, '../assets/firmas/firma-anibal.png');
 const QRCode = require('qrcode');
@@ -176,7 +178,12 @@ async function crearResponsivaPDF({ data, entregadoPor, firmaITBase64, firmaRece
 async function getResponsivaPDF(req, res) {
   try {
     const equipoId = Number(req.params.equipoId);
-    const entregadoPor = (req.query.entregadoPor || '').toString().trim();
+
+    // Fuente principal: usuario autenticado. Fallback temporal: query param (compatibilidad frontend)
+    const entregadoPor = (
+      req.user?.nombre_completo ||
+      (req.query.entregadoPor || '').toString().trim()
+    );
 
     if (!entregadoPor) {
       return res.status(400).json({ error: 'Falta el nombre de quien entrega' });
@@ -193,6 +200,8 @@ async function getResponsivaPDF(req, res) {
       entregadoPor,
       output: res
     });
+    // Nota: getResponsivaPDF es solo preview del PDF — no llama insertarFirmaPendiente
+    // La auditoría ENTREGA se registra en postGenerarLinkFirma y postResponsivaFirmaDigital
   } catch (error) {
     const statusCode = error.statusCode || 500;
     res.status(statusCode).json({ error: error.message });
@@ -203,7 +212,13 @@ async function getResponsivaPDF(req, res) {
 async function postResponsivaFirmaDigital(req, res) {
   try {
     const equipoId = Number(req.params.equipoId);
-    const { firmaITBase64, firmaReceptorBase64, entregadoPor } = req.body;
+    const { firmaITBase64, firmaReceptorBase64 } = req.body;
+
+    // Fuente principal: usuario autenticado. Fallback temporal: body (compatibilidad frontend)
+    const entregadoPor =
+      req.user?.nombre_completo ||
+      req.body.entregadoPor ||
+      '';
 
     if (!firmaITBase64) {
       return res.status(400).json({ error: 'Firma de IT requerida' });
@@ -247,6 +262,15 @@ async function postResponsivaFirmaDigital(req, res) {
       equipoId,
       nombreArchivo,
       rutaArchivo
+    });
+
+    // Auditoría ENTREGA — fire-and-forget
+    registrarAuditoriaEquipo({
+      equipoId,
+      serviceTag: data.service_tag || null,
+      accion:     'ENTREGA',
+      realizadoPor: req.user,
+      descripcion: `Responsiva con firma digital generada por ${entregadoPor}`,
     });
 
     res.json({
@@ -319,7 +343,17 @@ async function getBitlocker(req, res) {
 async function postGenerarLinkFirma(req, res) {
   try {
     const equipoId = Number(req.params.equipoId);
-    const { entregadoPor, tipoEntregador } = req.body;
+
+    // Fuente principal: usuario autenticado. Fallback temporal: body (compatibilidad frontend)
+    const entregadoPor =
+      req.user?.nombre_completo ||
+      req.body.entregadoPor ||
+      '';
+
+    const tipoEntregador =
+      (req.user ? normalizeRol(req.user.tipo_usuario) : null) ||
+      req.body.tipoEntregador ||
+      'IT';
 
     const baseUrl =
       process.env.FRONTEND_URL ||
@@ -335,6 +369,15 @@ async function postGenerarLinkFirma(req, res) {
       tipoEntregador,
       baseUrl,
       frontendPath
+    });
+
+    // Auditoría ENTREGA — fire-and-forget
+    registrarAuditoriaEquipo({
+      equipoId,
+      serviceTag: req.body.serviceTag || req.body.service_tag || null,
+      accion:     'ENTREGA',
+      realizadoPor: req.user,
+      descripcion: `Link de firma generado por ${req.user?.nombre_completo || entregadoPor}`,
     });
 
     res.json(result);
@@ -504,6 +547,16 @@ async function getHistorialLiberaciones(req, res) {
     res.status(500).json({
       error: error.message
     });
+  }
+}
+
+async function getHistorialAltas(req, res) {
+  try {
+    const filtro = req.query.filtro || 'hoy';
+    const result = await inventarioModel.obtenerHistorialAltas(filtro);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 }
 
@@ -786,6 +839,7 @@ module.exports = {
   postGuardarFirmaToken,
   getHistorialEntregas,
   getHistorialLiberaciones,
+  getHistorialAltas,
   getDetalleHistorialLiberacion,
   getEquipoPorQrToken,
   patchPermisoSalida,

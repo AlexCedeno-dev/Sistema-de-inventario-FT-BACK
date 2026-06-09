@@ -35,6 +35,8 @@ router.get('/liberaciones-historial', inventarioController.getHistorialLiberacio
 
 router.get('/liberaciones-historial/:historialLiberacionId',inventarioController.getDetalleHistorialLiberacion);
 
+router.get('/altas-historial', inventarioController.getHistorialAltas);
+
 router.get('/equipos/qr/:token', inventarioController.getEquipoPorQrToken); 
 
 router.patch('/equipos/:equipoId/permiso-salida', inventarioController.patchPermisoSalida);

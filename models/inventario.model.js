@@ -453,6 +453,52 @@ async function actualizarPermisoSalida(equipoId, permisoSalida) {
     }
   }
 
+async function obtenerHistorialAltas(filtro) {
+  const db = await crearConexion();
+
+  try {
+    let where = "DATE(a.fecha) = CURDATE()";
+
+    if (filtro === 'semana') {
+      where = "YEARWEEK(a.fecha, 1) = YEARWEEK(CURDATE(), 1)";
+    }
+
+    if (filtro === 'mes') {
+      where = `MONTH(a.fecha) = MONTH(CURDATE())
+               AND YEAR(a.fecha) = YEAR(CURDATE())`;
+    }
+
+    const [rows] = await db.execute(`
+      SELECT
+        a.auditoria_id,
+        a.equipo_id,
+        a.service_tag,
+        a.realizado_por_nombre,
+        a.realizado_por_rol,
+        a.descripcion,
+        a.fecha,
+        emp.nombre_completo  AS empleado_nombre,
+        emp.departamento     AS empleado_departamento,
+        md.marca,
+        md.modelo
+      FROM auditoria_equipos a
+      LEFT JOIN equipos e
+        ON e.equipo_id = a.equipo_id
+      LEFT JOIN empleados emp
+        ON emp.empleado_id = e.empleado_id
+      LEFT JOIN marca_dispositivos md
+        ON md.marca_id = e.marca_id
+      WHERE a.accion = 'ALTA'
+        AND ${where}
+      ORDER BY a.fecha DESC
+    `);
+
+    return rows;
+  } finally {
+    await db.end();
+  }
+}
+
 module.exports = {
   obtenerInventarioNuevo,
   obtenerInventarioViejo,
@@ -467,6 +513,7 @@ module.exports = {
   obtenerHistorialEntregas,
   obtenerHistorialLiberaciones,
   obtenerDetalleHistorialLiberacion,
+  obtenerHistorialAltas,
 
   obtenerEquipoPorQrToken,
   actualizarPermisoSalida,
