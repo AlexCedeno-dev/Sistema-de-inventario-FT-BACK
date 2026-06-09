@@ -41,7 +41,7 @@ if not exist "C:\NodeGuard" mkdir "C:\NodeGuard"
 
 :: ── Copiar archivos ──
 copy /Y "%~dp0NodeGuardAgent.exe" "C:\NodeGuard\NodeGuardAgent.exe" >nul
-copy /Y "%~dp0.env"               "C:\NodeGuard\.env"               >nul
+copy /Y "%~dp0nodeguard.env"      "C:\NodeGuard\.env"               >nul
 echo  [OK] Archivos copiados a C:\NodeGuard
 
 :: ── Eliminar tarea previa si existe ──
