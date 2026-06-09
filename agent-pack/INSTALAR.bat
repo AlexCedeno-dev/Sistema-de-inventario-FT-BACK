@@ -26,8 +26,8 @@ if not exist "%~dp0NodeGuardAgent.exe" (
     exit /b 1
 )
 
-if not exist "%~dp0.env" (
-    echo  [ERROR] No se encontro el archivo .env
+if not exist "%~dp0nodeguard.env" (
+    echo  [ERROR] No se encontro el archivo nodeguard.env
     echo  Contacta al area de IT.
     pause
     exit /b 1
