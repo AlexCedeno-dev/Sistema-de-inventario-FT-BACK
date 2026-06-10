@@ -8,7 +8,6 @@ const agentesRoutes = require('./agentes.routes');
 const registroRoutes = require('./registro.routes');
 const inventarioRoutes = require('./inventario.routes');
 const dashboardRoutes = require('./dashboard.routes');
-const inventarioABCRoutes = require('./inventarioABC.routes');
 const homeRoutes = require('../src/modules/home/home.routes');
 const inventarioController = require('../controllers/inventario.controller');
 
@@ -32,6 +31,5 @@ router.use('/home', requireAuth, homeRoutes);
 router.use('/', requireAuth, registroRoutes);
 router.use('/', requireAuth, inventarioRoutes);
 router.use('/', requireAuth, dashboardRoutes);
-router.use('/', requireAuth, inventarioABCRoutes);
 
 module.exports = router;
