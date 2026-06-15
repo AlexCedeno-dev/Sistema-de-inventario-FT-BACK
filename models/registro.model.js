@@ -47,11 +47,12 @@ async function insertarEmpleado(empleado) {
   try {
     const [result] = await db.execute(
       `
-      INSERT INTO empleados (nombre_completo, departamento, planta, status)
-      VALUES (?, ?, ?, 'ACTIVO')
+      INSERT INTO empleados (nombre_completo, nomina, departamento, planta, status)
+      VALUES (?, ?, ?, ?, 'ACTIVO')
       `,
       [
         empleado.nombre_completo,
+        empleado.nomina ?? null,
         empleado.departamento,
         empleado.planta
       ]
@@ -417,7 +418,12 @@ async function crearAccesoEquipo(empleadoId, licenciaOffice = null) {
 }
 
 async function insertarLicenciaEnrollado(empleadoId, data) {
-const accesoId = await obtenerOCrearAccesoEmpleado(empleadoId, data.licencia_office);
+const accesoId = await obtenerOCrearAccesoEmpleado(empleadoId, data.licencia_office, {
+    correoTeams: data.correoTeams ?? null,
+    passwordTeams: data.passwordTeams ?? null,
+    correoOA: data.correoOA ?? null,
+    passwordOA: data.passwordOA ?? null
+  });
   const db = await crearConexion();
 
   try {
@@ -540,11 +546,13 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
     await db.execute(`
       UPDATE empleados
       SET nombre_completo = ?,
+          nomina = ?,
           departamento = ?,
           planta = ?
       WHERE empleado_id = ?
     `,[
       body.empleado.nombre_completo,
+      body.empleado.nomina ?? null,
       body.empleado.departamento,
       body.empleado.planta,
       empleadoId
@@ -585,7 +593,8 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
     const accesoId = await obtenerOCrearAccesoEmpleadoEnConexion(
       db,
       empleadoId,
-      body.equipo.licencia_office
+      body.equipo.licencia_office,
+      body.accesos
     );
 
     await guardarLicenciaEnrolladoEnConexion(db, accesoId, body.windows);
@@ -692,7 +701,7 @@ async function guardarDatosWindowsEnConexion(db, equipoId, windows) {
   );
 }
 
-async function obtenerOCrearAccesoEmpleadoEnConexion(db, empleadoId, licenciaOffice) {
+async function obtenerOCrearAccesoEmpleadoEnConexion(db, empleadoId, licenciaOffice, accesos = {}) {
   const [rows] = await db.execute(
     `
     SELECT acceso_id
@@ -707,13 +716,37 @@ async function obtenerOCrearAccesoEmpleadoEnConexion(db, empleadoId, licenciaOff
   if (rows.length > 0) {
     const accesoId = rows[0].acceso_id;
 
+    const camposExtra = [];
+    const valoresExtra = [];
+
+    if (licenciaOffice !== null && licenciaOffice !== undefined) {
+      camposExtra.push('licencia_office = ?');
+      valoresExtra.push(licenciaOffice);
+    }
+    if (accesos.correoTeams !== null && accesos.correoTeams !== undefined) {
+      camposExtra.push('correo_teams = ?');
+      valoresExtra.push(accesos.correoTeams);
+    }
+    if (accesos.passwordTeams !== null && accesos.passwordTeams !== undefined) {
+      camposExtra.push('password_teams = ?');
+      valoresExtra.push(accesos.passwordTeams);
+    }
+    if (accesos.correoOA !== null && accesos.correoOA !== undefined) {
+      camposExtra.push('correo_oa = ?');
+      valoresExtra.push(accesos.correoOA);
+    }
+    if (accesos.passwordOA !== null && accesos.passwordOA !== undefined) {
+      camposExtra.push('password_oa = ?');
+      valoresExtra.push(accesos.passwordOA);
+    }
+
+    if (camposExtra.length === 0) return accesoId;
+
+    const setClause = camposExtra.join(', ');
+
     await db.execute(
-      `
-      UPDATE licencias_accesos
-      SET licencia_office = ?
-      WHERE acceso_id = ?
-      `,
-      [licenciaOffice, accesoId]
+      `UPDATE licencias_accesos SET ${setClause} WHERE acceso_id = ?`,
+      [...valoresExtra, accesoId]
     );
 
     return accesoId;
@@ -723,11 +756,17 @@ async function obtenerOCrearAccesoEmpleadoEnConexion(db, empleadoId, licenciaOff
     `
     INSERT INTO licencias_accesos (
       empleado_id,
-      licencia_office
+      licencia_office,
+      correo_teams,
+      password_teams,
+      correo_oa,
+      password_oa
     )
-    VALUES (?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
     `,
-    [empleadoId, licenciaOffice]
+    [empleadoId, licenciaOffice,
+     accesos.correoTeams ?? null, accesos.passwordTeams ?? null,
+     accesos.correoOA ?? null, accesos.passwordOA ?? null]
   );
 
   return result.insertId;
@@ -810,7 +849,7 @@ async function guardarLicenciaOsticketEnConexion(db, accesoId, accesos) {
   );
 }
 
-async function obtenerOCrearAccesoEmpleado(empleadoId, licenciaOffice = null) {
+async function obtenerOCrearAccesoEmpleado(empleadoId, licenciaOffice = null, accesos = {}) {
   const db = await crearConexion();
 
   try {
@@ -828,29 +867,68 @@ async function obtenerOCrearAccesoEmpleado(empleadoId, licenciaOffice = null) {
     if (rows.length > 0) {
       const accesoId = rows[0].acceso_id;
 
-      if (licenciaOffice) {
-        await db.execute(
-          `
-          UPDATE licencias_accesos
-          SET licencia_office = ?
-          WHERE acceso_id = ?
-          `,
-          [licenciaOffice, accesoId]
-        );
+      const camposExtra = [];
+      const valoresExtra = [];
+
+      if (licenciaOffice !== null && licenciaOffice !== undefined) {
+        camposExtra.push('licencia_office = ?');
+        valoresExtra.push(licenciaOffice);
       }
+      if (accesos.correoTeams !== null && accesos.correoTeams !== undefined) {
+        camposExtra.push('correo_teams = ?');
+        valoresExtra.push(accesos.correoTeams);
+      }
+      if (accesos.passwordTeams !== null && accesos.passwordTeams !== undefined) {
+        camposExtra.push('password_teams = ?');
+        valoresExtra.push(accesos.passwordTeams);
+      }
+      if (accesos.correoOA !== null && accesos.correoOA !== undefined) {
+        camposExtra.push('correo_oa = ?');
+        valoresExtra.push(accesos.correoOA);
+      }
+      if (accesos.passwordOA !== null && accesos.passwordOA !== undefined) {
+        camposExtra.push('password_oa = ?');
+        valoresExtra.push(accesos.passwordOA);
+      }
+
+      if (camposExtra.length === 0) return accesoId;
+
+      const setClause = camposExtra.join(', ');
+
+      await db.execute(
+        `UPDATE licencias_accesos SET ${setClause} WHERE acceso_id = ?`,
+        [...valoresExtra, accesoId]
+      );
 
       return accesoId;
     }
 
+    const columnsExtra = [];
+    const insertValoresExtra = [];
+
+    if (accesos.correoTeams !== null && accesos.correoTeams !== undefined) {
+      columnsExtra.push('correo_teams');
+      insertValoresExtra.push(accesos.correoTeams);
+    }
+    if (accesos.passwordTeams !== null && accesos.passwordTeams !== undefined) {
+      columnsExtra.push('password_teams');
+      insertValoresExtra.push(accesos.passwordTeams);
+    }
+    if (accesos.correoOA !== null && accesos.correoOA !== undefined) {
+      columnsExtra.push('correo_oa');
+      insertValoresExtra.push(accesos.correoOA);
+    }
+    if (accesos.passwordOA !== null && accesos.passwordOA !== undefined) {
+      columnsExtra.push('password_oa');
+      insertValoresExtra.push(accesos.passwordOA);
+    }
+
+    const insertColumns = ['empleado_id', 'licencia_office', ...columnsExtra].join(', ');
+    const insertPlaceholders = ['?', '?', ...columnsExtra.map(() => '?')].join(', ');
+
     const [result] = await db.execute(
-      `
-      INSERT INTO licencias_accesos (
-        empleado_id,
-        licencia_office
-      )
-      VALUES (?, ?)
-      `,
-      [empleadoId, licenciaOffice || null]
+      `INSERT INTO licencias_accesos (${insertColumns}) VALUES (${insertPlaceholders})`,
+      [empleadoId, licenciaOffice || null, ...insertValoresExtra]
     );
 
     return result.insertId;
@@ -878,6 +956,7 @@ async function obtenerDetalleEquipo(equipoId) {
           DATE_FORMAT(e.end_warranty,'%Y-%m-%d') AS end_warranty,
 
           emp.nombre_completo,
+          emp.nomina,
           emp.departamento,
           emp.planta,
 
@@ -909,7 +988,7 @@ async function obtenerDetalleEquipo(equipoId) {
       `, [equipoId]);
 
       const [accesoRows] = await db.execute(`
-        SELECT acceso_id, licencia_office
+        SELECT acceso_id, licencia_office, correo_teams, password_teams, correo_oa, password_oa
         FROM licencias_accesos
         WHERE empleado_id = ?
         ORDER BY acceso_id DESC
@@ -963,6 +1042,10 @@ async function obtenerDetalleEquipo(equipoId) {
         ...equipo,
         ...(windowsRows[0] || {}),
         licencia_office: acceso?.licencia_office || null,
+        correo_teams: acceso?.correo_teams || null,
+        password_teams: acceso?.password_teams || null,
+        correo_oa: acceso?.correo_oa || null,
+        password_oa: acceso?.password_oa || null,
         ...enrrolado,
         ...nas,
         ...vpn,
@@ -1210,6 +1293,20 @@ async function obtenerDetalleEquipo(equipoId) {
     }
   }
 
+async function actualizarNominaEmpleado(empleadoId, nomina) {
+  const db = await crearConexion();
+  try {
+    const [result] = await db.execute(
+      'UPDATE empleados SET nomina = ? WHERE empleado_id = ?',
+      [nomina, empleadoId]
+    );
+  } catch (err) {
+    console.error('[actualizarNominaEmpleado] ERROR:', err.message);
+  } finally {
+    await db.end();
+  }
+}
+
 async function liberarEquipoFisico(equipoId) {
   const db = await crearConexion();
 
@@ -1235,6 +1332,7 @@ module.exports = {
   buscarEquipoPorServiceTag,
   buscarEmpleadoPorNombre,
   insertarEmpleado,
+  actualizarNominaEmpleado,
   buscarMarcaModelo,
   insertarMarcaModelo,
   insertarEquipo,

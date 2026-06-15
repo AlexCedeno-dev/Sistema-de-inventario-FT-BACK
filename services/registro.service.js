@@ -47,8 +47,14 @@ async function registrarEquipo(body) {
 
     if (empleadoRows.length > 0) {
         empleadoId = empleadoRows[0].empleado_id;
+        if (empleado.nomina !== undefined) {
+            await registroModel.actualizarNominaEmpleado(empleadoId, empleado.nomina ?? null);
+        }
     } else {
-        const empleadoResult = await registroModel.insertarEmpleado(empleado);
+        const empleadoResult = await registroModel.insertarEmpleado({
+            ...empleado,
+            nomina: empleado.nomina ?? null
+        });
         empleadoId = empleadoResult.insertId;
     }
 
@@ -94,12 +100,19 @@ async function registrarEquipo(body) {
         await registroModel.insertarDatosWindows(equipoId, windows);
     }
 
-    if (windows?.correoEnrollado || windows?.passwordEnrollado) {
+    // Siempre guardar licencia_office si viene, independiente del correo enrollado
+    if (equipo?.licencia_office || windows?.correoEnrollado || windows?.passwordEnrollado
+        || accesos?.correoTeams || accesos?.passwordTeams
+        || accesos?.correoOA || accesos?.passwordOA) {
         await registroModel.insertarLicenciaEnrollado(empleadoId, {
-        correo_enrrolado: windows.correoEnrollado,
-        password_enrrolado: windows.passwordEnrollado,
-        licencia_office: equipo.licencia_office
-    });
+            correo_enrrolado: windows?.correoEnrollado || null,
+            password_enrrolado: windows?.passwordEnrollado || null,
+            licencia_office: equipo?.licencia_office || null,
+            correoTeams: accesos?.correoTeams || null,
+            passwordTeams: accesos?.passwordTeams || null,
+            correoOA: accesos?.correoOA || null,
+            passwordOA: accesos?.passwordOA || null
+        });
     }
 
     if (accesos?.usuarioNAS || accesos?.passwordNAS) {
