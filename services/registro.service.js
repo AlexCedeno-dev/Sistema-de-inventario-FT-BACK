@@ -48,7 +48,12 @@ async function registrarEquipo(body) {
     if (empleadoRows.length > 0) {
         empleadoId = empleadoRows[0].empleado_id;
         if (empleado.nomina !== undefined) {
-            await registroModel.actualizarNominaEmpleado(empleadoId, empleado.nomina ?? null);
+            await registroModel.actualizarDatosEmpleado(
+                empleadoId,
+                empleado.nomina ?? null,
+                empleado.tipo_empleado ?? null,
+                empleado.nombre_gerente ?? null
+            );
         }
     } else {
         const empleadoResult = await registroModel.insertarEmpleado({
@@ -135,6 +140,8 @@ async function registrarEquipo(body) {
             password_osticket: accesos.passwordOsticket
         });
     }
+
+    await registroModel.insertarOtrosAccesos(equipoId, accesos?.otros || []);
 
     if (monitoreo_id) {
         await registroModel.actualizarMonitoreoDespuesRegistro(monitoreo_id, equipoId);

@@ -47,14 +47,16 @@ async function insertarEmpleado(empleado) {
   try {
     const [result] = await db.execute(
       `
-      INSERT INTO empleados (nombre_completo, nomina, departamento, planta, status)
-      VALUES (?, ?, ?, ?, 'ACTIVO')
+      INSERT INTO empleados (nombre_completo, nomina, departamento, planta, tipo_empleado, nombre_gerente, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'ACTIVO')
       `,
       [
         empleado.nombre_completo,
         empleado.nomina ?? null,
         empleado.departamento,
-        empleado.planta
+        empleado.planta,
+        empleado.tipo_empleado ?? null,
+        empleado.nombre_gerente ?? null
       ]
     );
 
@@ -548,13 +550,17 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
       SET nombre_completo = ?,
           nomina = ?,
           departamento = ?,
-          planta = ?
+          planta = ?,
+          tipo_empleado = ?,
+          nombre_gerente = ?
       WHERE empleado_id = ?
     `,[
       body.empleado.nombre_completo,
       body.empleado.nomina ?? null,
       body.empleado.departamento,
       body.empleado.planta,
+      body.empleado.tipo_empleado ?? null,
+      body.empleado.nombre_gerente ?? null,
       empleadoId
     ]);
 
@@ -957,6 +963,8 @@ async function obtenerDetalleEquipo(equipoId) {
 
           emp.nombre_completo,
           emp.nomina,
+          emp.tipo_empleado,
+          emp.nombre_gerente,
           emp.departamento,
           emp.planta,
 
@@ -1038,6 +1046,11 @@ async function obtenerDetalleEquipo(equipoId) {
         osticket = osticketRows[0] || {};
       }
 
+      const [otrosRows] = await db.execute(
+        'SELECT etiqueta, valor FROM accesos_otros WHERE equipo_id = ? ORDER BY id ASC',
+        [equipoId]
+      );
+
       return [{
         ...equipo,
         ...(windowsRows[0] || {}),
@@ -1049,7 +1062,8 @@ async function obtenerDetalleEquipo(equipoId) {
         ...enrrolado,
         ...nas,
         ...vpn,
-        ...osticket
+        ...osticket,
+        otros_accesos: otrosRows || []
       }];
     } finally {
       await db.end();
@@ -1293,15 +1307,31 @@ async function obtenerDetalleEquipo(equipoId) {
     }
   }
 
-async function actualizarNominaEmpleado(empleadoId, nomina) {
+async function actualizarDatosEmpleado(empleadoId, nomina, tipo_empleado, nombre_gerente) {
   const db = await crearConexion();
   try {
     const [result] = await db.execute(
-      'UPDATE empleados SET nomina = ? WHERE empleado_id = ?',
-      [nomina, empleadoId]
+      'UPDATE empleados SET nomina = ?, tipo_empleado = ?, nombre_gerente = ? WHERE empleado_id = ?',
+      [nomina, tipo_empleado ?? null, nombre_gerente ?? null, empleadoId]
     );
   } catch (err) {
-    console.error('[actualizarNominaEmpleado] ERROR:', err.message);
+    console.error('[actualizarDatosEmpleado] ERROR:', err.message);
+  } finally {
+    await db.end();
+  }
+}
+
+async function insertarOtrosAccesos(equipoId, otros) {
+  if (!otros || otros.length === 0) return;
+  const db = await crearConexion();
+  try {
+    for (const item of otros) {
+      if (!item.etiqueta?.trim() || !item.valor?.trim()) continue;
+      await db.execute(
+        'INSERT INTO accesos_otros (equipo_id, etiqueta, valor) VALUES (?, ?, ?)',
+        [equipoId, item.etiqueta.trim(), item.valor.trim()]
+      );
+    }
   } finally {
     await db.end();
   }
@@ -1332,7 +1362,7 @@ module.exports = {
   buscarEquipoPorServiceTag,
   buscarEmpleadoPorNombre,
   insertarEmpleado,
-  actualizarNominaEmpleado,
+  actualizarDatosEmpleado,
   buscarMarcaModelo,
   insertarMarcaModelo,
   insertarEquipo,
@@ -1353,6 +1383,7 @@ module.exports = {
   actualizarEquipoCompleto,
 
   obtenerDetalleEquipo,
+  insertarOtrosAccesos,
 
   obtenerDatosHistorialLiberacion,
   insertarHistorialLiberacion,
