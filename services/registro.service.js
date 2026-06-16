@@ -78,12 +78,6 @@ async function registrarEquipo(body) {
     const fechaCompraFinal = equipo.fecha_compra || equipo.fecha_asig || '2001-01-01';
     const fechaAsignacionFinal = equipo.fecha_asig || null;
 
-    // console.log('[DEBUG][registrarEquipo] fecha_compra original:', equipo.fecha_compra);
-    // console.log('[DEBUG][registrarEquipo] fecha_asig original:', equipo.fecha_asig);
-    // console.log('[DEBUG][registrarEquipo] fecha_compra final:', fechaCompraFinal);
-    // console.log('[DEBUG][registrarEquipo] fecha_asig final:', fechaAsignacionFinal);
-
-
     const equipoResult = await registroModel.insertarEquipo({
         empleadoId,
         marcaId,
@@ -308,7 +302,10 @@ function normalizarPayloadActualizacion(body = {}) {
                 body.nombreEmpleado
             )),
             departamento: textoONull(pick(empleado.departamento, body.departamento)),
-            planta: textoONull(pick(empleado.planta, body.planta))
+            planta: textoONull(pick(empleado.planta, body.planta)),
+            nomina: textoONull(pick(empleado.nomina, body.nomina)),
+            tipo_empleado: textoONull(pick(empleado.tipo_empleado, body.tipo_empleado)),
+            nombre_gerente: textoONull(pick(empleado.nombre_gerente, body.nombre_gerente))
         },
         equipo: {
             marca: textoONull(pick(equipo.marca, body.marca)),
@@ -334,12 +331,17 @@ function normalizarPayloadActualizacion(body = {}) {
             passwordEnrollado: textoONull(pick(windows.passwordEnrollado, windows.password_enrrolado, body.password_enrrolado))
         },
         accesos: {
-            usuarioNAS: textoONull(pick(accesos.usuarioNAS, accesos.usuario_nas, body.usuario_nas)),
-            passwordNAS: textoONull(pick(accesos.passwordNAS, accesos.password_nas, body.password_nas)),
-            usuarioVPN: textoONull(pick(accesos.usuarioVPN, accesos.usuario_vpn, body.usuario_vpn)),
-            passwordVPN: textoONull(pick(accesos.passwordVPN, accesos.password_vpn, body.password_vpn)),
-            usuarioOsticket: textoONull(pick(accesos.usuarioOsticket, accesos.usuario_osticket, body.usuario_osticket)),
-            passwordOsticket: textoONull(pick(accesos.passwordOsticket, accesos.password_osticket, body.password_osticket))
+            usuarioNAS:       textoONull(pick(accesos.usuarioNAS, accesos.usuario_nas, body.usuario_nas)),
+            passwordNAS:      textoONull(pick(accesos.passwordNAS, accesos.password_nas, body.password_nas)),
+            usuarioVPN:       textoONull(pick(accesos.usuarioVPN, accesos.usuario_vpn, body.usuario_vpn)),
+            passwordVPN:      textoONull(pick(accesos.passwordVPN, accesos.password_vpn, body.password_vpn)),
+            usuarioOsticket:  textoONull(pick(accesos.usuarioOsticket, accesos.usuario_osticket, body.usuario_osticket)),
+            passwordOsticket: textoONull(pick(accesos.passwordOsticket, accesos.password_osticket, body.password_osticket)),
+            correoTeams:      textoONull(pick(accesos.correoTeams, accesos.correo_teams)),
+            passwordTeams:    textoONull(pick(accesos.passwordTeams, accesos.password_teams)),
+            correoOA:         textoONull(pick(accesos.correoOA, accesos.correo_oa)),
+            passwordOA:       textoONull(pick(accesos.passwordOA, accesos.password_oa)),
+            otros:            accesos.otros ?? [],
         }
     };
 }

@@ -608,6 +608,8 @@ async function actualizarEquipoCompleto(equipoId, empleadoId, body) {
     await guardarLicenciaVpnEnConexion(db, accesoId, body.accesos);
     await guardarLicenciaOsticketEnConexion(db, accesoId, body.accesos);
 
+    await reemplazarOtrosAccesosEnConexion(db, equipoId, body.accesos?.otros || []);
+
     await db.commit();
 
     return {status:'ok'};
@@ -1047,7 +1049,7 @@ async function obtenerDetalleEquipo(equipoId) {
       }
 
       const [otrosRows] = await db.execute(
-        'SELECT etiqueta, valor FROM accesos_otros WHERE equipo_id = ? ORDER BY id ASC',
+        'SELECT etiqueta, correo, valor FROM accesos_otros WHERE equipo_id = ? ORDER BY id ASC',
         [equipoId]
       );
 
@@ -1328,8 +1330,8 @@ async function insertarOtrosAccesos(equipoId, otros) {
     for (const item of otros) {
       if (!item.etiqueta?.trim() || !item.valor?.trim()) continue;
       await db.execute(
-        'INSERT INTO accesos_otros (equipo_id, etiqueta, valor) VALUES (?, ?, ?)',
-        [equipoId, item.etiqueta.trim(), item.valor.trim()]
+        'INSERT INTO accesos_otros (equipo_id, etiqueta, correo, valor) VALUES (?, ?, ?, ?)',
+        [equipoId, item.etiqueta.trim(), item.correo?.trim() || null, item.valor.trim()]
       );
     }
   } finally {
@@ -1355,6 +1357,18 @@ async function liberarEquipoFisico(equipoId) {
     return result;
   } finally {
     await db.end();
+  }
+}
+
+async function reemplazarOtrosAccesosEnConexion(db, equipoId, otros) {
+  await db.execute('DELETE FROM accesos_otros WHERE equipo_id = ?', [equipoId]);
+  if (!otros || otros.length === 0) return;
+  for (const item of otros) {
+    if (!item.etiqueta?.trim() || !item.valor?.trim()) continue;
+    await db.execute(
+      'INSERT INTO accesos_otros (equipo_id, etiqueta, correo, valor) VALUES (?, ?, ?, ?)',
+      [equipoId, item.etiqueta.trim(), item.correo?.trim() || null, item.valor.trim()]
+    );
   }
 }
 
@@ -1384,6 +1398,7 @@ module.exports = {
 
   obtenerDetalleEquipo,
   insertarOtrosAccesos,
+  reemplazarOtrosAccesosEnConexion,
 
   obtenerDatosHistorialLiberacion,
   insertarHistorialLiberacion,
