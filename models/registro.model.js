@@ -1105,6 +1105,10 @@ async function obtenerDetalleEquipo(equipoId) {
           emp.planta AS empleado_planta,
           emp.status AS empleado_status,
 
+          emp.nomina AS nomina,
+          emp.tipo_empleado AS tipo_empleado,
+          emp.nombre_gerente AS nombre_gerente,
+
           md.marca AS equipo_marca,
           md.modelo AS equipo_modelo,
 
@@ -1119,6 +1123,9 @@ async function obtenerDetalleEquipo(equipoId) {
           enr.correo_enrrolado,
           enr.password_enrrolado,
 
+          acc.correo_teams, acc.password_teams,
+          acc.correo_oa, acc.password_oa,
+
           nas.usuario_nas,
           nas.password_nas,
 
@@ -1126,7 +1133,11 @@ async function obtenerDetalleEquipo(equipoId) {
           vpn.password_vpn,
 
           ost.usuario_osticket,
-          ost.password_osticket
+          ost.password_osticket,
+
+          (SELECT JSON_ARRAYAGG(
+            JSON_OBJECT('etiqueta', ao.etiqueta, 'correo', ao.correo, 'valor', ao.valor)
+          ) FROM accesos_otros ao WHERE ao.equipo_id = e.equipo_id) AS otros_accesos
 
         FROM equipos e
 
@@ -1234,6 +1245,11 @@ async function obtenerDetalleEquipo(equipoId) {
           usuario_osticket,
           password_osticket,
 
+          nomina, tipo_empleado, nombre_gerente,
+          correo_teams, password_teams,
+          correo_oa, password_oa,
+          otros_accesos,
+
           liberado_por,
           tipo_liberador,
           estado,
@@ -1248,6 +1264,7 @@ async function obtenerDetalleEquipo(equipoId) {
           ?, ?,
           ?, ?,
           ?, ?,
+          ?, ?, ?, ?, ?, ?, ?, ?,
           ?, ?, 'LIBERADO', CURRENT_TIMESTAMP, ?
         )
         `,
@@ -1296,6 +1313,15 @@ async function obtenerDetalleEquipo(equipoId) {
 
           get('usuario_osticket', 'usuarioOsticket'),
           get('password_osticket', 'passwordOsticket'),
+
+          get('nomina'),
+          get('tipo_empleado'),
+          get('nombre_gerente'),
+          get('correo_teams'),
+          get('password_teams'),
+          get('correo_oa'),
+          get('password_oa'),
+          data.otros_accesos ? JSON.stringify(data.otros_accesos) : null,
 
           get('liberado_por', 'liberadoPor'),
           get('tipo_liberador', 'tipoLiberador'),
