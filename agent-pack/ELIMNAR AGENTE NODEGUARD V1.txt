@@ -1,0 +1,24 @@
+$SERVICE = "NodeGuardAgentSERVER"
+$NSSM = "C:\Tools\nssm\nssm.exe"
+
+# Detener servicio
+Stop-Service $SERVICE -Force -ErrorAction SilentlyContinue
+
+# Cerrar proceso si quedó vivo
+Stop-Process -Name "NodeGuardAgentSERVER" -Force -ErrorAction SilentlyContinue
+
+# Eliminar servicio
+if (Test-Path $NSSM) {
+    & $NSSM remove $SERVICE confirm
+} else {
+    sc.exe delete $SERVICE
+}
+
+# Borrar carpeta del agente
+Remove-Item "C:\NodeGuard" -Recurse -Force -ErrorAction SilentlyContinue
+
+# Validar
+Get-Service $SERVICE -ErrorAction SilentlyContinue
+Get-Process NodeGuardAgentSERVER -ErrorAction SilentlyContinue
+
+Write-Host "Si no apareció nada arriba, el agente ya fue eliminado." -ForegroundColor Green
