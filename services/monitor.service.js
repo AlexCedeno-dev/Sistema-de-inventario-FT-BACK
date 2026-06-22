@@ -61,10 +61,7 @@ async function buscarEquipoIdPorServiceTag(db, serviceTag) {
   const [rows] = await db.execute(
     `SELECT e.equipo_id
      FROM equipos e
-     INNER JOIN empleados emp
-       ON emp.empleado_id = e.empleado_id
      WHERE TRIM(UPPER(e.service_tag)) = TRIM(UPPER(?))
-       AND e.empleado_id IS NOT NULL
      LIMIT 1`,
     [serviceTag]
   );

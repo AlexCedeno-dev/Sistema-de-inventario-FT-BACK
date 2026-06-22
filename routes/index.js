@@ -9,6 +9,9 @@ const registroRoutes = require('./registro.routes');
 const inventarioRoutes = require('./inventario.routes');
 const dashboardRoutes = require('./dashboard.routes');
 const homeRoutes = require('../src/modules/home/home.routes');
+const componentesManufacturaRoutes = require('./componentesManufactura.routes');
+const estacionesOlsRoutes = require('./estacionesOls.routes');
+const asignacionesComponentesRoutes = require('./asignacionesComponentes.routes');
 const inventarioController = require('../controllers/inventario.controller');
 
 const { requireAuth } = require('../middlewares/auth.middleware');
@@ -31,5 +34,8 @@ router.use('/home', requireAuth, homeRoutes);
 router.use('/', requireAuth, registroRoutes);
 router.use('/', requireAuth, inventarioRoutes);
 router.use('/', requireAuth, dashboardRoutes);
+router.use('/', requireAuth, componentesManufacturaRoutes);
+router.use('/', requireAuth, estacionesOlsRoutes);
+router.use('/', requireAuth, asignacionesComponentesRoutes);
 
 module.exports = router;

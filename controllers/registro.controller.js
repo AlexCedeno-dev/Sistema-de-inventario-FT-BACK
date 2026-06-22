@@ -97,6 +97,8 @@ async function postLiberarEquipo(req, res) {
 
       res.json(result);
     } catch (error) {
+      console.error('[liberar] Error completo:', error);
+      console.error('[liberar] Stack:', error?.stack);
       const statusCode = error.statusCode || 500;
 
       const payload = { error: error.message };

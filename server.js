@@ -138,3 +138,11 @@ const HOST = process.env.HOST || '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`Servidor activo en ${HOST}:${PORT}`);
 });
+
+app.get('/api/debug-token', (req, res) => {
+  res.json({
+    cookies: req.cookies,
+    token: req.cookies?.nodeguard_session || null,
+    authorization: req.headers.authorization || null
+  });
+});
