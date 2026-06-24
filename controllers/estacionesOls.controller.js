@@ -201,11 +201,14 @@ async function getEtiquetaQrOLSPDF(req, res) {
     let data;
     try {
       const [rows] = await db.execute(
-        `SELECT eo.estacion_id, eo.nombre_estacion, eo.tipo_estacion,
-                eo.planta, eo.linea, eo.turno, eo.estado, eo.activo_fijo,
-                eo.fecha_alta, e.service_tag, e.qr_token
+        `SELECT eo.estacion_id, eo.activo_fijo, eo.fecha_alta,
+                e.service_tag, e.qr_token,
+                md.marca, md.modelo,
+                me.tipo_equipo
          FROM estaciones_ols eo
-         JOIN equipos e ON e.equipo_id = eo.equipo_id
+         JOIN  equipos e              ON e.equipo_id          = eo.equipo_id
+         LEFT JOIN marca_dispositivos md ON md.marca_id       = e.marca_id
+         LEFT JOIN monitoreo_equipos  me ON me.equipo_id_registrado = eo.equipo_id
          WHERE eo.estacion_id = ?
          LIMIT 1`,
         [estacionId]
@@ -269,10 +272,23 @@ async function getEtiquetaQrOLSPDF(req, res) {
       doc.strokeColor('#000000');
     }
 
-    campo('ACTIVO FIJO', data.activo_fijo);
-    campo('ESTACIÓN', data.nombre_estacion);
-    campo('TIPO / PLANTA', `${data.tipo_estacion || 'N/A'} · ${data.planta || 'N/A'}`);
-    campo('LÍNEA / TURNO', [data.linea, data.turno].filter(Boolean).join(' · ') || 'N/A', mmToPt(10));
+    const tipoRaw = (data.tipo_equipo || '').trim().toUpperCase();
+    const tipoLabel = tipoRaw.includes('MINI PC')
+      ? 'MINI PC'
+      : tipoRaw.includes('DESKTOP')
+        ? 'DESKTOP'
+        : 'N/A';
+
+    const equipoLabel = [data.marca, data.modelo].filter(Boolean).join(' ') || 'N/A';
+
+    const fechaAltaTexto = data.fecha_alta
+      ? new Date(data.fecha_alta).toLocaleDateString('es-MX')
+      : 'N/A';
+
+    campo('CÓDIGO ACTIVO', data.activo_fijo);
+    campo('TIPO', tipoLabel);
+    campo('EQUIPO', equipoLabel);
+    campo('FECHA DE ALTA', fechaAltaTexto, mmToPt(10));
 
     doc.end();
   } catch (error) {
