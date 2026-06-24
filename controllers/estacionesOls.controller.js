@@ -203,7 +203,7 @@ async function getEtiquetaQrOLSPDF(req, res) {
       const [rows] = await db.execute(
         `SELECT eo.estacion_id, eo.nombre_estacion, eo.tipo_estacion,
                 eo.planta, eo.linea, eo.turno, eo.estado, eo.activo_fijo,
-                eo.fecha_alta, e.service_tag, e.qr_token, e.marca, e.modelo
+                eo.fecha_alta, e.service_tag, e.qr_token
          FROM estaciones_ols eo
          JOIN equipos e ON e.equipo_id = eo.equipo_id
          WHERE eo.estacion_id = ?
