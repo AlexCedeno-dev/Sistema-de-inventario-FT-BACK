@@ -612,7 +612,17 @@ async function getEquipoPorQrToken(req, res) {
         modelo: equipo.modelo,
         permiso_salida: equipo.permiso_salida,
         estado_registro: equipo.estado_registro,
-        fecha_alta_equipo: equipo.fecha_alta_equipo
+        fecha_alta_equipo: equipo.fecha_alta_equipo,
+        es_ols: equipo.estacion_id !== null,
+        tipo_activo: equipo.estacion_id !== null ? 'OLS' : 'EQUIPO',
+        estacion_id: equipo.estacion_id ?? null,
+        nombre_estacion: equipo.nombre_estacion ?? null,
+        tipo_estacion: equipo.tipo_estacion ?? null,
+        planta: equipo.planta ?? null,
+        linea: equipo.linea ?? null,
+        turno: equipo.turno ?? null,
+        estado_estacion: equipo.estado_estacion ?? null,
+        fecha_alta_estacion: equipo.fecha_alta_estacion ?? null
       }
     });
   } catch (error) {

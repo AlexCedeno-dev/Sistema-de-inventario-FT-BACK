@@ -391,12 +391,22 @@ async function obtenerEquipoPorQrToken(token) {
         CASE
           WHEN e.permiso_salida = 1 THEN 'AUTORIZADO'
           ELSE 'NO_AUTORIZADO'
-        END AS permiso_salida
+        END AS permiso_salida,
+        s.estacion_id,
+        s.nombre_estacion,
+        s.tipo_estacion,
+        s.planta,
+        s.linea,
+        s.turno,
+        s.estado AS estado_estacion,
+        s.fecha_alta AS fecha_alta_estacion
       FROM equipos e
       LEFT JOIN empleados emp
         ON emp.empleado_id = e.empleado_id
       LEFT JOIN marca_dispositivos md
         ON md.marca_id = e.marca_id
+      LEFT JOIN estaciones_ols s
+        ON s.equipo_id = e.equipo_id
       WHERE e.qr_token = ?
       LIMIT 1
     `, [token]);

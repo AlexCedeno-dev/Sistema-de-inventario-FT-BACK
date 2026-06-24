@@ -31,22 +31,27 @@ async function obtenerMonitoreosDisponiblesOls() {
         modelo,
         hostname,
         ip,
-        cpu_modelo,
-        ram_total_gb,
-        last_seen,
+        cpu_modelo AS cpu,
+        ram_total_gb AS ram,
+        last_seen AS ultima_conexion,
         tipo_equipo
       FROM monitoreo_equipos
       WHERE ignorado = 0
         AND registrado_en_inventario = 0
-        AND TRIM(UPPER(tipo_equipo)) = 'DESKTOP'
-        AND last_seen >= NOW() - INTERVAL 150 SECOND
+        AND TRIM(UPPER(tipo_equipo)) IN ('DESKTOP', 'MINI PC')
         AND NOT EXISTS (
           SELECT 1 FROM equipos e
-          WHERE TRIM(UPPER(e.service_tag)) = TRIM(UPPER(monitoreo_equipos.service_tag))
+          WHERE TRIM(UPPER(e.service_tag COLLATE utf8mb4_general_ci)) = TRIM(UPPER(monitoreo_equipos.service_tag COLLATE utf8mb4_general_ci))
         )
       ORDER BY last_seen DESC
     `);
-    return rows;
+
+    const ahora = new Date();
+    return rows.filter((r) => {
+      if (!r.ultima_conexion) return false;
+      const segundos = (ahora.getTime() - new Date(r.ultima_conexion).getTime()) / 1000;
+      return segundos <= 150;
+    });
   } finally {
     await db.end();
   }
@@ -83,6 +88,8 @@ async function registrarEstacionOls(datosMonitoreo, datosOls, usuarioId, usuario
     const nombreEquipo =
       datosMonitoreo.hostname?.trim() || datosOls.nombre_estacion;
 
+    const fechaCompra = datosOls.fecha_compra ?? new Date().toISOString().slice(0, 10);
+
     const [equipoResult] = await db.execute(
       `INSERT INTO equipos (
         tipo,
@@ -95,11 +102,13 @@ async function registrarEstacionOls(datosMonitoreo, datosOls, usuarioId, usuario
         specs,
         qr_token,
         fecha_compra,
+        start_warranty,
+        end_warranty,
         permiso_salida,
         estado_registro,
         registrado_desde,
         fecha_alta_equipo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'activo', 'agente', NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'activo', 'agente', NOW())`,
       [
         'OLS',
         datosMonitoreo.service_tag ?? null,
@@ -110,7 +119,9 @@ async function registrarEstacionOls(datosMonitoreo, datosOls, usuarioId, usuario
         datosMonitoreo.device_id ?? null,
         specs,
         qrToken,
-        new Date().toISOString().slice(0, 10),
+        fechaCompra,
+        datosOls.start_warranty ?? null,
+        datosOls.end_warranty ?? null,
       ]
     );
 
@@ -203,11 +214,11 @@ async function registrarEstacionOls(datosMonitoreo, datosOls, usuarioId, usuario
   }
 }
 
-async function listarEstacionesOls() {
+async function listarEstacionesOls(estado = 'ACTIVA') {
   const db = await crearConexion();
   try {
-    const [rows] = await db.execute(`
-      SELECT
+    const [rows] = await db.execute(
+      `SELECT
         s.estacion_id,
         s.nombre_estacion,
         s.tipo_estacion,
@@ -218,10 +229,15 @@ async function listarEstacionesOls() {
         s.activo_fijo,
         s.equipo_id,
         s.fecha_alta,
+        e.qr_token,
         e.service_tag,
         md.marca,
         md.modelo,
         e.hostname_detectado,
+        e.fecha_compra,
+        e.start_warranty,
+        e.end_warranty,
+        e.estado_registro,
         me.last_seen,
         comp.total_componentes
       FROM estaciones_ols s
@@ -234,9 +250,150 @@ async function listarEstacionesOls() {
         WHERE estado = 'ACTIVA' AND tipo_destino = 'ESTACION_OLS'
         GROUP BY estacion_id
       ) comp ON comp.estacion_id = s.estacion_id
-      ORDER BY s.fecha_alta DESC
-    `);
+      WHERE s.estado = ?
+      ORDER BY s.fecha_alta DESC`,
+      [estado]
+    );
     return rows;
+  } finally {
+    await db.end();
+  }
+}
+
+async function darBajaEstacionOls(estacionId) {
+  const db = await crearConexion();
+  try {
+    await db.beginTransaction();
+
+    const [rows] = await db.execute(
+      `SELECT s.*, e.service_tag
+       FROM estaciones_ols s
+       INNER JOIN equipos e ON e.equipo_id = s.equipo_id
+       WHERE s.estacion_id = ? LIMIT 1`,
+      [estacionId]
+    );
+
+    if (rows.length === 0) {
+      const err = new Error(`Estación OLS con id ${estacionId} no encontrada.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const snapshot = rows[0];
+
+    if (snapshot.estado === 'BAJA') {
+      const err = new Error(`La estación OLS ${estacionId} ya está dada de baja.`);
+      err.statusCode = 409;
+      throw err;
+    }
+
+    await db.execute(
+      `UPDATE estaciones_ols SET estado = 'BAJA' WHERE estacion_id = ?`,
+      [estacionId]
+    );
+
+    await db.execute(
+      `UPDATE equipos SET estado_registro = 'LIBERADO' WHERE equipo_id = ?`,
+      [snapshot.equipo_id]
+    );
+
+    await db.commit();
+    return snapshot;
+  } catch (error) {
+    await db.rollback();
+    throw error;
+  } finally {
+    await db.end();
+  }
+}
+
+async function reactivarEstacionOls(estacionId) {
+  const db = await crearConexion();
+  try {
+    await db.beginTransaction();
+
+    const [rows] = await db.execute(
+      `SELECT s.*, e.service_tag
+       FROM estaciones_ols s
+       INNER JOIN equipos e ON e.equipo_id = s.equipo_id
+       WHERE s.estacion_id = ? LIMIT 1`,
+      [estacionId]
+    );
+
+    if (rows.length === 0) {
+      const err = new Error(`Estación OLS con id ${estacionId} no encontrada.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const snapshot = rows[0];
+
+    if (snapshot.estado === 'ACTIVA') {
+      const err = new Error(`La estación OLS ${estacionId} ya está activa.`);
+      err.statusCode = 409;
+      throw err;
+    }
+
+    await db.execute(
+      `UPDATE estaciones_ols SET estado = 'ACTIVA' WHERE estacion_id = ?`,
+      [estacionId]
+    );
+
+    await db.execute(
+      `UPDATE equipos SET estado_registro = 'activo' WHERE equipo_id = ?`,
+      [snapshot.equipo_id]
+    );
+
+    await db.commit();
+    return snapshot;
+  } catch (error) {
+    await db.rollback();
+    throw error;
+  } finally {
+    await db.end();
+  }
+}
+
+async function actualizarEstacionOls(estacionId, datosNuevos) {
+  const db = await crearConexion();
+  try {
+    const [rows] = await db.execute(
+      `SELECT s.*, e.service_tag
+       FROM estaciones_ols s
+       INNER JOIN equipos e ON e.equipo_id = s.equipo_id
+       WHERE s.estacion_id = ? LIMIT 1`,
+      [estacionId]
+    );
+
+    if (rows.length === 0) {
+      const err = new Error(`Estación OLS con id ${estacionId} no encontrada.`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const snapshot = rows[0];
+
+    await db.execute(
+      `UPDATE estaciones_ols
+       SET nombre_estacion = ?,
+           tipo_estacion   = ?,
+           planta          = ?,
+           linea           = ?,
+           turno           = ?
+       WHERE estacion_id   = ?`,
+      [
+        datosNuevos.nombre_estacion,
+        datosNuevos.tipo_estacion,
+        datosNuevos.planta,
+        datosNuevos.linea  ?? null,
+        datosNuevos.turno  ?? null,
+        estacionId,
+      ]
+    );
+
+    return snapshot;
+  } catch (error) {
+    throw error;
   } finally {
     await db.end();
   }
@@ -246,4 +403,7 @@ module.exports = {
   obtenerMonitoreosDisponiblesOls,
   registrarEstacionOls,
   listarEstacionesOls,
+  darBajaEstacionOls,
+  reactivarEstacionOls,
+  actualizarEstacionOls,
 };
