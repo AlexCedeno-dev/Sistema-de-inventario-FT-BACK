@@ -27,6 +27,7 @@ router.post('/equipos/:equipoId/generar-link-firma', inventarioController.postGe
 router.get('/firma/:token/datos', inventarioController.getDatosFirmaToken
 );
 
+router.get('/firma/:token/preview', inventarioController.getPreviewFirmaToken);
 router.post('/firma/:token/guardar', inventarioController.postGuardarFirmaToken);
 
 router.get('/entregas-historial', inventarioController.getHistorialEntregas);

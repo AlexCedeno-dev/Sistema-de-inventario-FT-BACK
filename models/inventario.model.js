@@ -21,6 +21,8 @@ const [rows] = await db.execute(`
         emp.status,
         emp.departamento,
         emp.planta,
+        emp.tipo_empleado,
+        emp.nombre_gerente,
         md.marca,
         md.modelo,
         resp.nombre_archivo AS carta_responsiva,
@@ -116,7 +118,9 @@ async function obtenerDatosResponsivaPorEquipoId(equipoId) {
         md.modelo,
         emp.nombre_completo,
         emp.departamento,
-        emp.planta
+        emp.planta,
+        emp.tipo_empleado,
+        emp.nombre_gerente
       FROM equipos e
       LEFT JOIN empleados emp
         ON emp.empleado_id = e.empleado_id
@@ -230,7 +234,9 @@ async function obtenerFirmaPendientePorToken(token) {
         md.modelo,
         emp.nombre_completo,
         emp.departamento,
-        emp.planta
+        emp.planta,
+        emp.tipo_empleado,
+        emp.nombre_gerente
       FROM firmas_pendientes fp
       INNER JOIN equipos e
         ON e.equipo_id = fp.equipo_id

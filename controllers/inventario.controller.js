@@ -165,8 +165,11 @@ async function crearResponsivaPDF({ data, entregadoPor, firmaITBase64, firmaRece
     doc.font('Helvetica-Bold').fontSize(9);
     
     doc.text(GERENTE_NOMBRE, 70, yFirmas + 5, { width: 180, align: 'center' });
-    doc.text(data.nombre_completo || 'Receptor', 340, yFirmas + 5, { width: 180, align: 'center' });
-    
+    const nombreReceptor = data.tipo_empleado === 'becario'
+      ? (data.nombre_gerente || 'Receptor')
+      : (data.nombre_completo || 'Receptor');
+    doc.text(nombreReceptor, 340, yFirmas + 5, { width: 180, align: 'center' });
+
     doc.font('Helvetica').fontSize(8);
     doc.text('Departamento de IT', 70, yFirmas + 18, { width: 180, align: 'center' });
     doc.text('Receptor', 340, yFirmas + 18, { width: 180, align: 'center' });
@@ -399,6 +402,45 @@ async function getDatosFirmaToken(req, res) {
 }
 
 
+async function getPreviewFirmaToken(req,res){
+
+ try{
+
+  const { token }=req.params;
+
+  const firmaData=
+  await inventarioService
+  .obtenerDatosFirmaPorToken(token);
+
+  const data=
+  await inventarioService
+  .obtenerDatosResponsiva(
+    firmaData.equipo_id
+  );
+
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader(
+   'Content-Disposition',
+   'inline; filename="preview.pdf"'
+  );
+
+  await crearResponsivaPDF({
+    data,
+    entregadoPor:firmaData.entregado_por,
+    firmaReceptorBase64:null,
+    output:res
+  });
+
+ }catch(error){
+
+  const statusCode=error.statusCode||500;
+  res.status(statusCode)
+  .json({error:error.message});
+
+ }
+
+}
+
 async function postGuardarFirmaToken(req,res){
 
  try{
@@ -422,6 +464,13 @@ async function postGuardarFirmaToken(req,res){
  .obtenerDatosFirmaPorToken(
    token
  );
+
+ if(firmaData.estado==='ENTREGADO'){
+   return res.status(409)
+   .json({
+    error:'Esta firma ya fue completada anteriormente'
+   });
+ }
 
  const data=
  await inventarioService
@@ -846,6 +895,7 @@ module.exports = {
   getBitlocker,
   postGenerarLinkFirma,
   getDatosFirmaToken,
+  getPreviewFirmaToken,
   postGuardarFirmaToken,
   getHistorialEntregas,
   getHistorialLiberaciones,
