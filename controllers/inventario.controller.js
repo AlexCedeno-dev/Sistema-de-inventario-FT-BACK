@@ -33,7 +33,7 @@ async function getInventarioViejo(req, res) {
   }
 }
 
-async function crearResponsivaPDF({ data, entregadoPor, firmaITBase64, firmaReceptorBase64, output }) {
+async function crearResponsivaPDF({ data, entregadoPor, firmaITBase64, firmaReceptorBase64, firmaGerenteBase64 = null, esBecarioPreview = false, output }) {
     const doc = new PDFDocument({
         size: 'LETTER',
         margin: 30 // Margen ligeramente menor para ganar espacio
@@ -146,33 +146,57 @@ async function crearResponsivaPDF({ data, entregadoPor, firmaITBase64, firmaRece
     // --- SECCIÓN DE FIRMAS ---
     const yFirmas = 680;
 
-    // Firmas (Imágenes)
-    if (fs.existsSync(GERENTE_FIRMA_PATH)) {
-        doc.image(GERENTE_FIRMA_PATH, 100, yFirmas - 45, { fit: [120, 40], align: 'center' });
+    if (firmaGerenteBase64 || esBecarioPreview) {
+        // Layout 3 columnas: IT | Empleado | Gerente
+        if (fs.existsSync(GERENTE_FIRMA_PATH)) {
+            doc.image(GERENTE_FIRMA_PATH, 50, yFirmas - 45, { fit: [110, 40], align: 'center' });
+        }
+        if (firmaReceptorBase64) {
+            const base64DataReceptor = firmaReceptorBase64.replace(/^data:image\/png;base64,/, '');
+            const firmaReceptorBuffer = Buffer.from(base64DataReceptor, 'base64');
+            doc.image(firmaReceptorBuffer, 220, yFirmas - 45, { fit: [110, 40], align: 'center' });
+        }
+        if (firmaGerenteBase64) {
+            const base64DataGerente = firmaGerenteBase64.replace(/^data:image\/png;base64,/, '');
+            const firmaGerenteBuffer = Buffer.from(base64DataGerente, 'base64');
+            doc.image(firmaGerenteBuffer, 395, yFirmas - 45, { fit: [110, 40], align: 'center' });
+        }
+
+        doc.moveTo(45,  yFirmas).lineTo(175, yFirmas).stroke();
+        doc.moveTo(215, yFirmas).lineTo(345, yFirmas).stroke();
+        doc.moveTo(385, yFirmas).lineTo(515, yFirmas).stroke();
+
+        doc.font('Helvetica-Bold').fontSize(8);
+        doc.text(GERENTE_NOMBRE,                       45,  yFirmas + 5, { width: 130, align: 'center' });
+        doc.text(data.nombre_completo || 'Empleado',  215, yFirmas + 5, { width: 130, align: 'center' });
+        doc.text(data.nombre_gerente  || 'Gerente',   385, yFirmas + 5, { width: 130, align: 'center' });
+
+        doc.font('Helvetica').fontSize(7.5);
+        doc.text('Departamento de IT',              45,  yFirmas + 18, { width: 130, align: 'center' });
+        doc.text('Firma del Empleado',              215, yFirmas + 18, { width: 130, align: 'center' });
+        doc.text('Firma del Gerente / Encargado',  385, yFirmas + 18, { width: 130, align: 'center' });
+    } else {
+        // Layout 2 columnas (comportamiento actual)
+        if (fs.existsSync(GERENTE_FIRMA_PATH)) {
+            doc.image(GERENTE_FIRMA_PATH, 100, yFirmas - 45, { fit: [120, 40], align: 'center' });
+        }
+        if (firmaReceptorBase64) {
+            const base64DataReceptor = firmaReceptorBase64.replace(/^data:image\/png;base64,/, '');
+            const firmaReceptorBuffer = Buffer.from(base64DataReceptor, 'base64');
+            doc.image(firmaReceptorBuffer, 370, yFirmas - 45, { fit: [120, 40], align: 'center' });
+        }
+
+        doc.moveTo(70, yFirmas).lineTo(250, yFirmas).stroke();
+        doc.moveTo(340, yFirmas).lineTo(520, yFirmas).stroke();
+
+        doc.font('Helvetica-Bold').fontSize(9);
+        doc.text(GERENTE_NOMBRE, 70, yFirmas + 5, { width: 180, align: 'center' });
+        doc.text(data.nombre_completo || 'Receptor', 340, yFirmas + 5, { width: 180, align: 'center' });
+
+        doc.font('Helvetica').fontSize(8);
+        doc.text('Departamento de IT', 70, yFirmas + 18, { width: 180, align: 'center' });
+        doc.text('Receptor', 340, yFirmas + 18, { width: 180, align: 'center' });
     }
-    
-    if (firmaReceptorBase64) {
-        const base64DataReceptor = firmaReceptorBase64.replace(/^data:image\/png;base64,/, '');
-        const firmaReceptorBuffer = Buffer.from(base64DataReceptor, 'base64');
-        doc.image(firmaReceptorBuffer, 370, yFirmas - 45, { fit: [120, 40], align: 'center' });
-    }
-
-    // Líneas de firma
-    doc.moveTo(70, yFirmas).lineTo(250, yFirmas).stroke();
-    doc.moveTo(340, yFirmas).lineTo(520, yFirmas).stroke();
-
-    // Textos de firma
-    doc.font('Helvetica-Bold').fontSize(9);
-    
-    doc.text(GERENTE_NOMBRE, 70, yFirmas + 5, { width: 180, align: 'center' });
-    const nombreReceptor = data.tipo_empleado === 'becario'
-      ? (data.nombre_gerente || 'Receptor')
-      : (data.nombre_completo || 'Receptor');
-    doc.text(nombreReceptor, 340, yFirmas + 5, { width: 180, align: 'center' });
-
-    doc.font('Helvetica').fontSize(8);
-    doc.text('Departamento de IT', 70, yFirmas + 18, { width: 180, align: 'center' });
-    doc.text('Receptor', 340, yFirmas + 18, { width: 180, align: 'center' });
 
     doc.end();
     return doc;
@@ -424,12 +448,20 @@ async function getPreviewFirmaToken(req,res){
    'inline; filename="preview.pdf"'
   );
 
-  await crearResponsivaPDF({
-    data,
-    entregadoPor:firmaData.entregado_por,
-    firmaReceptorBase64:null,
-    output:res
-  });
+  try {
+    await crearResponsivaPDF({
+      data,
+      entregadoPor:firmaData.entregado_por,
+      firmaReceptorBase64:null,
+      esBecarioPreview: firmaData.tipo_empleado === 'becario',
+      output:res
+    });
+  } catch(err) {
+    console.error('Error generando preview PDF:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error generando preview' });
+    }
+  }
 
  }catch(error){
 
@@ -448,9 +480,7 @@ async function postGuardarFirmaToken(req,res){
  const { token }=
  req.params;
 
- const {
-  firmaReceptorBase64
- }=req.body;
+ const { firmaReceptorBase64, firmaGerenteBase64 } = req.body;
 
  if(!firmaReceptorBase64){
    return res.status(400)
@@ -469,6 +499,13 @@ async function postGuardarFirmaToken(req,res){
    return res.status(409)
    .json({
     error:'Esta firma ya fue completada anteriormente'
+   });
+ }
+
+ if (firmaData.tipo_empleado === 'becario' && !firmaGerenteBase64) {
+   return res.status(400).json({
+     ok: false,
+     mensaje: 'Se requiere la firma del gerente para empleados becarios.'
    });
  }
 
@@ -505,13 +542,12 @@ async function postGuardarFirmaToken(req,res){
    rutaArchivo
  );
 
- const doc= await crearResponsivaPDF({
-      data,
-      entregadoPor:
-      firmaData.entregado_por,
-
-      firmaReceptorBase64,
-   output:stream
+ const doc = await crearResponsivaPDF({
+   data,
+   entregadoPor: firmaData.entregado_por,
+   firmaReceptorBase64,
+   firmaGerenteBase64,
+   output: stream
  });
 
  await new Promise(
